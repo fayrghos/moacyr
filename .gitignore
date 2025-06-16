@@ -1,0 +1,13 @@
+# Cache
+__pycache__/
+
+# Config
+*.env
+*.ini
+
+# Data
+data/
+*.db
+
+# Environment
+.venv/

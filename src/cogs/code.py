@@ -1,0 +1,161 @@
+"""Code running commands."""
+
+from textwrap import dedent, shorten
+from typing import Any
+from discord import Interaction, TextStyle
+from discord.ui import Modal, TextInput
+from discord.ext.commands import Cog
+from src.bot import CustomBot
+from dataclasses import dataclass
+from discord.app_commands import Choice, autocomplete, command
+
+import discord
+import src.utils as utils
+import requests
+
+
+def get_compiler_list() -> list[dict[str, Any]]:
+    """Gets the list of available compilers from WandBox API."""
+    try:
+        request = requests.get("https://wandbox.org/api/list.json", timeout=10)
+        response: list[dict[str, Any]] = request.json()
+
+        # Head compilers don't work
+        functional_compilers = [
+            compiler for compiler in response
+            if "head" not in compiler.get("name", "").lower()
+        ]
+        return functional_compilers
+
+    except Exception as error:
+        print(f"Cannot connect to WandBox. ({error})")
+        return []
+
+
+def get_minimal_list() -> list[Choice]:
+    """The list used in the empty autocomplete field."""
+    min_choice_list: list[Choice] = []
+    unique_languages: list[str] = []
+
+    for item in compiler_list:
+        if len(min_choice_list) >= utils.MAX_COMPLETE_OPTS:
+            break
+
+        language = item.get("language", "???")
+        compiler = item.get("name", "")
+
+        if compiler and language not in unique_languages:
+            unique_languages.append(language)
+            min_choice_list.append(Choice(name=language, value=compiler))
+    return min_choice_list
+
+
+async def compiler_complete(inter: Interaction, current: str) -> list[Choice]:
+    """The autocomplete for the code run command."""
+    if not current:
+        return minimal_compiler_list
+
+    max_choice_list: list[Choice] = []
+    for item in compiler_list:
+        if len(max_choice_list) >= utils.MAX_COMPLETE_OPTS:
+            break
+
+        compiler = item.get("name", "")
+        language = item.get("language", "???")
+        if current.lower() not in language.lower():
+            continue
+
+        if compiler and current.lower() in language.lower():
+            max_choice_list.append(Choice(name=f"{language} @ {compiler}", value=compiler))
+    return max_choice_list
+
+
+compiler_list = get_compiler_list()
+minimal_compiler_list = get_minimal_list()
+
+
+@dataclass
+class CodeLanguage:
+    """Represents a code language supported by Wandbox."""
+
+    display: str
+    version: str
+    compiler: str
+
+
+class CodeModal(Modal):
+    """Modal used in code eval commands."""
+
+    code_field: TextInput = TextInput(
+        label="Código Desejado",
+        placeholder="print('Hello, World!')",
+        required=True,
+        style=TextStyle.paragraph
+    )
+
+    def __init__(self, lang_obj: CodeLanguage) -> None:
+        super().__init__(title="Executar Código")
+        self.lang_obj = lang_obj
+
+    async def on_submit(self, inter: Interaction) -> None:
+        await inter.response.defer(thinking=True)
+
+        code = self.code_field.value
+
+        response = requests.post("https://wandbox.org/api/compile.json", json={
+            "code": code,
+            "compiler": self.lang_obj.compiler
+        })
+
+        if response.status_code != 200:
+            await inter.followup.send(embed=utils.error_embed("Não foi possível processar esse código."))
+            return
+
+        data = response.json()
+        prog_message = data.get("program_message") or data.get("compiler_message") or "<NENHUMA>"
+
+        status = data.get("status") or data.get("signal") or "Desconhecido"
+        desc = dedent(f"""\
+            Status: **{status}**
+            Compilador: **{self.lang_obj.compiler}**
+            ```{shorten(prog_message, 400)}```
+        """)
+
+        embed = discord.Embed(title=f"{self.lang_obj.display}",
+                              description=desc,
+                              color=utils.COLOR_DEBUG)
+        await inter.followup.send(embed=embed)
+
+
+class RunCog(Cog):
+
+    def __init__(self, bot: CustomBot) -> None:
+        self.bot = bot
+
+    @command(
+        name="code",
+    )
+    @autocomplete(language=compiler_complete)
+    async def runcode(self, inter: Interaction, language: str) -> None:
+        """Execute código em diversas linguagens de programação populares.
+
+        Args:
+            language: A linguagem desejada. Digite para ver mais linguagens e compiladores.
+        """
+        requested_lang = language.split(" ")[-1].lower()
+        for compiler in compiler_list:
+            if requested_lang == compiler.get("name", "").lower():
+                compiler = CodeLanguage(
+                    compiler.get("language", "???"),
+                    compiler.get("version", "???"),
+                    requested_lang
+                )
+                modal = CodeModal(compiler)
+                await inter.response.send_modal(modal)
+                return
+
+        await inter.response.send_message(embed=utils.error_embed("Nenhum compilador foi encontrado."))
+
+
+async def setup(bot: CustomBot) -> None:
+    await bot.add_cog(RunCog(bot))
