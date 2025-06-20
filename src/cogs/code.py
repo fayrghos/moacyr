@@ -1,6 +1,6 @@
 """Code running commands."""
 
-from textwrap import dedent, shorten
+from textwrap import dedent
 from typing import Any
 from discord import Interaction, TextStyle
 from discord.ui import Modal, TextInput
@@ -12,6 +12,9 @@ from discord.app_commands import Choice, autocomplete, command
 import discord
 import src.utils as utils
 import requests
+
+
+MAX_OUTPUT_WIDTH = 600
 
 
 def get_compiler_list() -> list[dict[str, Any]]:
@@ -94,31 +97,34 @@ class CodeModal(Modal):
     )
 
     def __init__(self, lang_obj: CodeLanguage) -> None:
-        super().__init__(title="Executar Código")
+        super().__init__(title=f"Executar {lang_obj.display}")
         self.lang_obj = lang_obj
 
     async def on_submit(self, inter: Interaction) -> None:
         await inter.response.defer(thinking=True)
 
-        code = self.code_field.value
-
+        code: str = self.code_field.value
         response = requests.post("https://wandbox.org/api/compile.json", json={
             "code": code,
             "compiler": self.lang_obj.compiler
         })
 
-        if response.status_code != 200:
-            await inter.followup.send(embed=utils.error_embed("Não foi possível processar esse código."))
+        if response.status_code == 500:
+            await inter.followup.send(embed=utils.error_embed("O servidor não foi capaz de processar esse código."))
             return
 
-        data = response.json()
-        prog_message = data.get("program_message") or data.get("compiler_message") or "<NENHUMA>"
+        elif response.status_code != 200:
+            await inter.followup.send(embed=utils.error_embed("Ocorreu um erro inesperado ao processar esse código."))
+            return
 
-        status = data.get("status") or data.get("signal") or "Desconhecido"
+        data: dict[str, str] = response.json()
+        prog_message: str = data.get("program_message") or data.get("compiler_message") or "<NENHUMA>"
+        status: str = data.get("status") or data.get("signal") or "Desconhecido"
+
         desc = dedent(f"""\
             Status: **{status}**
             Compilador: **{self.lang_obj.compiler}**
-            ```{shorten(prog_message, 400)}```
+            ```{utils.cooler_shorten(prog_message, MAX_OUTPUT_WIDTH)}```
         """)
 
         embed = discord.Embed(title=f"{self.lang_obj.display}",

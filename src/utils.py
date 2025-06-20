@@ -95,6 +95,23 @@ def check_permissions(need_perms: list[str], perms: Permissions) -> bool:
     return True
 
 
+def cooler_shorten(text: str, max_width: int) -> str:
+    """An alternative to textwrap.shorten that actually breaks words."""
+    text = " ".join(text.split())
+    text_len: int = len(text)
+
+    if text_len <= max_width:
+        return text
+
+    place: str = f" <+{text_len - max_width}>"
+    place_len: int = len(place)
+
+    if max_width <= place_len:
+        raise ValueError("The placeholder is hiding the entire text.")
+
+    return text[:max_width - place_len] + place
+
+
 class EmbScroller(View):
     """A view to scroll through multiple embeds."""
 
