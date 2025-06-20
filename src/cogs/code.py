@@ -2,8 +2,8 @@
 
 from textwrap import dedent
 from typing import Any
-from discord import Interaction, TextStyle
-from discord.ui import Modal, TextInput
+from discord import ButtonStyle, Interaction, TextStyle
+from discord.ui import Modal, TextInput, View, button, Button
 from discord.ext.commands import Cog
 from src.bot import CustomBot
 from dataclasses import dataclass
@@ -130,7 +130,26 @@ class CodeModal(Modal):
         embed = discord.Embed(title=f"{self.lang_obj.display}",
                               description=desc,
                               color=utils.COLOR_DEBUG)
-        await inter.followup.send(embed=embed)
+        await inter.followup.send(embed=embed, view=DisplayCodeView(inter, self.lang_obj, code))
+
+
+class DisplayCodeView(View):
+
+    def __init__(self, inter: Interaction, lang: CodeLanguage, code: str) -> None:
+        super().__init__(timeout=120)
+        self.inter = inter
+        self.code = code
+        self.lang = lang
+
+    async def on_timeout(self) -> None:
+        """Deletes all buttons after the timeout."""
+        message = await self.inter.original_response()
+        if message:
+            await message.edit(view=None)
+
+    @button(label="Ver Código", style=ButtonStyle.secondary)
+    async def display_code(self, inter: Interaction, button: Button) -> None:
+        await inter.response.send_message(f"```{self.lang.display}\n{self.code}```", ephemeral=True)
 
 
 class RunCog(Cog):
