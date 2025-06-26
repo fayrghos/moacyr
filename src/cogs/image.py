@@ -21,17 +21,16 @@ import src.utils as utils
 cfg = BotConfig()
 cfg.parse_section("Images", {
     "enabled": "yes",
-    "maxscale": 2.0,
-    "minscale": 0.5,
+    "maxscale": 3.0,
+    "minscale": 0.2,
 })
 
 MAX_FILESIZE = 1e7
-
 IMGS_ENABLED = cfg.getboolean("Images", "enabled")
 MAX_SCALE = cfg.getfloat("Images", "maxscale")
 MIN_SCALE = cfg.getfloat("Images", "minscale")
 
-allowed_conts: tuple[str, ...] = (
+ALLOWED_MIMES: tuple[str, ...] = (
     "image/png",
     "image/jpeg",
     "image/bmp",
@@ -97,22 +96,33 @@ async def call_anime_api(img_url: str) -> Embed:
             Minuto: **{minutes:02d}:{seconds:02d}**
             Similaridade: **{round(data["similarity"] * 100, 1)}%**
         """)
+
         embed.add_field(name="Dados", value=info_text)
-
         embed.set_image(url=data["image"] + "&size=l")
-
-    elif response.status_code == 400:
-        embed = utils.error_embed("A API não conseguiu decodificar a imagem enviada.",
-                                  title="Erro na Decodificação")
-
-    elif response.status_code == 404:
-        embed = utils.error_embed("A API não conseguiu coletar imagens do URL enviado.",
-                                  title="Erro na Solicitação")
+        return embed
 
     else:
-        embed = utils.error_embed("Algo deu errado.")
+        match response.status_code:
+            case 400:
+                return utils.error_embed("A API não foi capaz de decodificar a imagem enviada.")
 
-    return embed
+            case 403 | 404:
+                return utils.error_embed("A API não conseguiu extrair imagens do URL enviado.")
+
+            case 405:
+                return utils.error_embed("A API relatou que o método HTTP usado foi incorreto.")
+
+            case 500:
+                return utils.error_embed("O servidor da API relatou um erro interno.")
+
+            case 503:
+                return utils.error_embed("O banco de dados da API não está respondendo.")
+
+            case 504:
+                return utils.error_embed("O servidor da API está sobrecarregado.")
+
+            case _:
+                return utils.error_embed("Algo deu errado.")
 
 
 def save_gif(tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[float] = None) -> Path:
@@ -130,6 +140,12 @@ def save_gif(tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[
             file = file.resize(newsize)
         file.save(tmpfile.name, "GIF")
     return Path(tmpfile.name)
+
+
+def normalize_mime(mime: str) -> str:
+    """Normalize MIME types. It also removes semicolons because HTML files are goofy."""
+    return mime.split("/")[-1].split(";")[0].upper()
+
 
 class ImgGroup(Group):
 
@@ -164,12 +180,12 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.error_embed("Nenhum parâmetro foi fornecido.")
+            embed = utils.error_embed("Você precisa fornecer pelo menos um URL ou Arquivo.")
             await inter.followup.send(embed=embed)
             return
 
         if scale > MAX_SCALE or scale < MIN_SCALE:
-            embed = utils.error_embed(f"A escala só pode ir de {MIN_SCALE} até {MAX_SCALE}.")
+            embed = utils.error_embed(f"A escala só pode ir de {MIN_SCALE}x até {MAX_SCALE}x.")
             await inter.followup.send(embed=embed)
             return
 
@@ -184,7 +200,7 @@ class ImgGroup(Group):
                 await inter.followup.send(embed=embed)
                 return
 
-            if image.content_type in allowed_conts:
+            if image.content_type in ALLOWED_MIMES:
                 img_bytes = BytesIO(await image.read()) if isinstance(image, Attachment) else BytesIO(image.content)
                 tmpfile = NamedTemporaryFile(suffix=".gif", delete=False)
                 path = save_gif(tmpfile, img_bytes, scale)
@@ -193,8 +209,17 @@ class ImgGroup(Group):
                 tmpfile.close()
                 unlink(path)
 
+            elif not image.content_type:
+                embed = utils.error_embed("O arquivo não possui um tipo definido.")
+                await inter.followup.send(embed=embed)
+
             else:
-                embed = utils.error_embed("Formato de arquivo incompatível.")
+                embed = utils.error_embed(textwrap.dedent(f"""\
+                    O seu arquivo é do tipo inválido \"**{normalize_mime(image.content_type)}**\".
+
+                    Tipos suportados:
+                    {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
+                """))
                 await inter.followup.send(embed=embed)
 
         except FileSizeExceeded:
