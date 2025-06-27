@@ -3,7 +3,7 @@
 from discord import Attachment, Interaction, File, Embed, Message
 from discord.app_commands import Group, CheckFailure, command, context_menu
 from requests.exceptions import MissingSchema
-from typing import Any, Optional, cast
+from typing import Any, Optional, Self
 from PIL import Image
 from pathlib import Path
 from src.bot import CustomBot
@@ -37,37 +37,50 @@ ALLOWED_MIMES: tuple[str, ...] = (
     "image/webp",
 )
 
-
-class RequestedFile:
-    """A handler for file downloading."""
-
-    def __init__(self, url: str) -> None:
-        self.url = url
-        self.response = requests.get(self.url)
-
-        if self.response.status_code == 200:
-            self.content = self.response.content
-            self.content_type = self.response.headers.get("Content-Type")
-            self.size = len(self.content)
-
-
-class FileSizeExceeded(Exception):
-    pass
-
-
-class ImageTooSmall(Exception):
-    pass
-
-
-class ImageTooBig(Exception):
-    pass
-
-
 TITLE_LANGS: dict[str, str] = {
     "english": ":flag_gb:",
     "native": ":flag_jp:",
     "romaji": ":pencil:",
 }
+
+
+class ImageHandler:
+    """A wrapper for padronizing Attachments and pure URLs."""
+
+    @classmethod
+    async def from_attachment(cls, attach: Attachment) -> Self:
+        return cls(
+            url=attach.url,
+            content=await attach.read(),
+            mime=attach.content_type,
+            size=attach.size
+        )
+
+    @classmethod
+    async def from_url(cls, url: str) -> Self:
+        response = requests.get(url)
+
+        if response.status_code == 200:
+            return cls(
+                url=url,
+                content=response.content,
+                mime=response.headers.get("Content-Type"),
+                size=len(response.content)
+            )
+        raise ValueError("For some reason, the image is None.")
+
+    def __init__(self,
+                 url: str,
+                 content: bytes,
+                 mime: Optional[str],
+                 size: int) -> None:
+        self.url = url
+        self.content = BytesIO(content)
+        self.mime = mime or "application/octet-stream"
+        self.size = size
+
+        if self.size > MAX_FILESIZE:
+            raise FileSizeExceeded
 
 
 async def call_anime_api(img_url: str) -> Embed:
@@ -189,53 +202,51 @@ class ImgGroup(Group):
             await inter.followup.send(embed=embed)
             return
 
-        try:
-            # Casting because, for some reason, the type checker says that both file and url can be null
-            image = file or RequestedFile(cast(str, url))
-            if image.size > MAX_FILESIZE:
-                raise FileSizeExceeded
+        image: Optional[ImageHandler] = None
 
-            elif image.content_type == "image/gif" or image.url.startswith("https://tenor.com/"):
+        try:
+            if file:
+                image = await ImageHandler.from_attachment(file)
+            elif url:
+                image = await ImageHandler.from_url(url)
+            assert image
+
+            if image.mime == "image/gif" or image.url.startswith("https://tenor.com/"):
                 embed = utils.error_embed("Bem... isso já parece ser um GIF.")
                 await inter.followup.send(embed=embed)
                 return
 
-            if image.content_type in ALLOWED_MIMES:
-                img_bytes = BytesIO(await image.read()) if isinstance(image, Attachment) else BytesIO(image.content)
-                tmpfile = NamedTemporaryFile(suffix=".gif", delete=False)
-                path = save_gif(tmpfile, img_bytes, scale)
-
-                await inter.followup.send(file=File(path))
-                tmpfile.close()
-                unlink(path)
-
-            elif not image.content_type:
-                embed = utils.error_embed("O arquivo não possui um tipo definido.")
-                await inter.followup.send(embed=embed)
-
-            else:
+            elif image.mime not in ALLOWED_MIMES:
                 embed = utils.error_embed(textwrap.dedent(f"""\
-                    O seu arquivo é do tipo inválido \"**{normalize_mime(image.content_type)}**\".
+                    O seu arquivo é do tipo inválido \"**{normalize_mime(image.mime)}**\".
 
                     Tipos suportados:
                     {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
                 """))
                 await inter.followup.send(embed=embed)
+                return
+
+            temp_file = NamedTemporaryFile(suffix=".gif", delete=False)
+            path = save_gif(temp_file, image.content, scale)
+
+            await inter.followup.send(file=File(path))
+            temp_file.close()
+            unlink(path)
 
         except FileSizeExceeded:
-            embed = utils.error_embed("Este arquivo é pesado demais.")
+            embed = utils.error_embed("O arquivo enviado é pesado demais.")
             await inter.followup.send(embed=embed)
 
         except ImageTooBig:
-            embed = utils.error_embed("A imagem resultante é grande demais.")
+            embed = utils.error_embed("A imagem redimensionada é grande demais.")
             await inter.followup.send(embed=embed)
 
         except ImageTooSmall:
-            embed = utils.error_embed("A imagem resultante é pequena demais.")
+            embed = utils.error_embed("A imagem redimensionada é pequena demais.")
             await inter.followup.send(embed=embed)
 
         except MissingSchema:
-            embed = utils.error_embed("Insira um URL válido.")
+            embed = utils.error_embed("O URL enviado não é válido.")
             await inter.followup.send(embed=embed)
 
         except:
@@ -285,6 +296,18 @@ async def findanime_menu(inter: Interaction, message: Message) -> None:
     else:
         embed = utils.error_embed("Nenhuma imagem foi encontrada na mensagem.")
         await inter.followup.send(embed=embed)
+
+
+class FileSizeExceeded(Exception):
+    pass
+
+
+class ImageTooSmall(Exception):
+    pass
+
+
+class ImageTooBig(Exception):
+    pass
 
 
 async def setup(bot: CustomBot) -> None:
