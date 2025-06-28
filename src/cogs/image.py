@@ -88,19 +88,25 @@ class ImageHandler:
         self.mime = mime or "application/octet-stream"
         self.size = size
 
-        if self.content not in ALLOWED_MIMES:
+        if self.mime not in ALLOWED_MIMES:
             raise NotAllowedMime(self.mime)
 
 
-async def call_anime_api(image: ImageHandler) -> Embed:
+async def call_anime_api(*,
+                         image: Optional[ImageHandler] = None,
+                         tenor_hack_url: Optional[str] = None) -> Embed:
     """Returns a Discord embed containing info about an anime frame."""
     async with httpx.AsyncClient() as client:
         # Since tenor images are weird, but trace.moe supports them
-        if image.url.startswith("https://tenor.com"):
-            response = await client.get(f"https://api.trace.moe/search?url={image.url}&anilistInfo")
-        else:
+        if tenor_hack_url:
+            response = await client.get(f"https://api.trace.moe/search?url={tenor_hack_url}&anilistInfo")
+
+        elif image:
             response = await client.post("https://api.trace.moe/search?anilistInfo",
                                          files={"image": image.content})
+
+        else:
+            raise ValueError("Both image and tenor hack are None.")
 
     if response.status_code == 200:
         data: dict[str, Any] = response.json()["result"][0]
@@ -294,12 +300,16 @@ class ImgGroup(Group):
             return
 
         try:
-            if url:
-                embed = await call_anime_api(await ImageHandler.from_url(url))
+            if url and url.startswith("https://tenor.com"):
+                embed = await call_anime_api(tenor_hack_url=url)
+                await inter.followup.send(embed=embed)
+
+            elif url:
+                embed = await call_anime_api(image=await ImageHandler.from_url(url))
                 await inter.followup.send(embed=embed)
 
             elif file:
-                embed = await call_anime_api(await ImageHandler.from_attachment(file))
+                embed = await call_anime_api(image=await ImageHandler.from_attachment(file))
                 await inter.followup.send(embed=embed)
 
         except Exception as err:
