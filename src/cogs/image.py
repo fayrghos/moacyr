@@ -2,7 +2,7 @@
 
 from discord import Attachment, Interaction, File, Embed, Message
 from discord.app_commands import Group, CheckFailure, command, context_menu
-from requests.exceptions import MissingSchema
+from httpx import UnsupportedProtocol
 from typing import Any, Optional, Self
 from PIL import Image
 from pathlib import Path
@@ -13,8 +13,8 @@ from io import BytesIO
 from os import unlink
 from urllib.parse import quote
 
+import httpx
 import textwrap
-import requests
 import src.utils as utils
 
 
@@ -58,7 +58,14 @@ class ImageHandler:
 
     @classmethod
     async def from_url(cls, url: str) -> Self:
-        response = requests.get(url)
+        async with httpx.AsyncClient() as client:
+            # Just for checking the content size first
+            head = await client.head(url)
+            if int(head.headers.get("Content-Length", 0)) > MAX_FILESIZE:
+                raise FileSizeExceeded
+
+            # Actual request
+            response = await client.get(url)
 
         if response.status_code == 200:
             return cls(
@@ -85,7 +92,8 @@ class ImageHandler:
 
 async def call_anime_api(img_url: str) -> Embed:
     """Returns a Discord embed containing info about an anime frame."""
-    response = requests.get(f"https://api.trace.moe/search?url={img_url}&anilistInfo")
+    async with httpx.AsyncClient() as client:
+        response = await client.get(f"https://api.trace.moe/search?url={img_url}&anilistInfo")
 
     if response.status_code == 200:
         data: dict[str, Any] = response.json()["result"][0]
@@ -234,7 +242,7 @@ class ImgGroup(Group):
             unlink(path)
 
         except FileSizeExceeded:
-            embed = utils.error_embed("O arquivo enviado é pesado demais.")
+            embed = utils.error_embed("O arquivo enviado é pesado demais para ser processado.")
             await inter.followup.send(embed=embed)
 
         except ImageTooBig:
@@ -245,7 +253,7 @@ class ImgGroup(Group):
             embed = utils.error_embed("A imagem redimensionada é pequena demais.")
             await inter.followup.send(embed=embed)
 
-        except MissingSchema:
+        except UnsupportedProtocol:
             embed = utils.error_embed("O URL enviado não é válido.")
             await inter.followup.send(embed=embed)
 

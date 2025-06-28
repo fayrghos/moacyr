@@ -1,7 +1,7 @@
 """Steam-related commands."""
 
 # This code is a mess and has too much spaghetti
-# TODO: Rewrite this from scratch!
+# TODO: Rewrite this from scratch! ...and please nuke the requests lib!
 
 from discord import Interaction
 from discord.app_commands import Group, command, rename

@@ -11,7 +11,7 @@ from discord.app_commands import Choice, autocomplete, command
 
 import discord
 import src.utils as utils
-import requests
+import httpx
 
 
 MAX_OUTPUT_WIDTH = 600
@@ -20,7 +20,7 @@ MAX_OUTPUT_WIDTH = 600
 def get_compiler_list() -> list[dict[str, Any]]:
     """Gets the list of available compilers from WandBox API."""
     try:
-        request = requests.get("https://wandbox.org/api/list.json", timeout=10)
+        request = httpx.get("https://wandbox.org/api/list.json", timeout=10)
         response: list[dict[str, Any]] = request.json()
 
         # Head compilers don't work
@@ -102,12 +102,13 @@ class CodeModal(Modal):
 
     async def on_submit(self, inter: Interaction) -> None:
         await inter.response.defer(thinking=True)
-
         code: str = self.code_field.value
-        response = requests.post("https://wandbox.org/api/compile.json", json={
-            "code": code,
-            "compiler": self.lang_obj.compiler
-        })
+
+        async with httpx.AsyncClient() as client:
+            response = await client.post("https://wandbox.org/api/compile.json", json={
+                "code": code,
+                "compiler": self.lang_obj.compiler
+            })
 
         if response.status_code == 500:
             await inter.followup.send(embed=utils.error_embed("O servidor não foi capaz de processar esse código."))
