@@ -1,7 +1,7 @@
 """Image-related commands."""
 
-from discord import Attachment, Interaction, File, Embed, Message
-from discord.app_commands import Group, CheckFailure, command, context_menu
+from discord import Attachment, Interaction, File, Embed
+from discord.app_commands import Group, CheckFailure, command
 from httpx import UnsupportedProtocol
 from typing import Any, Optional, Self
 from PIL import Image
@@ -11,7 +11,6 @@ from src.config import BotConfig
 from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
 from io import BytesIO
 from os import unlink
-from urllib.parse import quote
 
 import httpx
 import textwrap
@@ -49,6 +48,9 @@ class ImageHandler:
 
     @classmethod
     async def from_attachment(cls, attach: Attachment) -> Self:
+        if attach.size > MAX_FILESIZE:
+            raise FileSizeExceeded
+
         return cls(
             url=attach.url,
             content=await attach.read(),
@@ -59,7 +61,7 @@ class ImageHandler:
     @classmethod
     async def from_url(cls, url: str) -> Self:
         async with httpx.AsyncClient() as client:
-            # Just for checking the content size first
+            # Just for checking the content first
             head = await client.head(url)
             if int(head.headers.get("Content-Length", 0)) > MAX_FILESIZE:
                 raise FileSizeExceeded
@@ -86,39 +88,50 @@ class ImageHandler:
         self.mime = mime or "application/octet-stream"
         self.size = size
 
-        if self.size > MAX_FILESIZE:
-            raise FileSizeExceeded
+        if self.content not in ALLOWED_MIMES:
+            raise NotAllowedMime(self.mime)
 
 
-async def call_anime_api(img_url: str) -> Embed:
+async def call_anime_api(image: ImageHandler) -> Embed:
     """Returns a Discord embed containing info about an anime frame."""
     async with httpx.AsyncClient() as client:
-        response = await client.get(f"https://api.trace.moe/search?url={img_url}&anilistInfo")
+        # Since tenor images are weird, but trace.moe supports them
+        if image.url.startswith("https://tenor.com"):
+            response = await client.get(f"https://api.trace.moe/search?url={image.url}&anilistInfo")
+        else:
+            response = await client.post("https://api.trace.moe/search?anilistInfo",
+                                         files={"image": image.content})
 
     if response.status_code == 200:
         data: dict[str, Any] = response.json()["result"][0]
 
         if data["anilist"]["isAdult"]:
-            return utils.error_embed("O melhor palpite encontrou conteúdo adulto.")
+            return utils.error_embed("O melhor palpite não pode ser exibido pois encontrou conteúdo adulto.")
+
+        similarity: int = round(data["similarity"] * 100, 1)
+        desc: str = f"[Clique para conhecer o anime.](<https://anilist.co/anime/{data["anilist"]["id"]}>)"
+
+        if similarity < 90:
+            desc += "\n\n⚠️ Similaridades abaixo de **90%** geralmente exibem erros."
 
         embed = Embed(
             title="Melhor Palpite",
-            description=f"[Ver informações do anime no AniList](<https://anilist.co/anime/{data['anilist']['id']}>)",
+            description=desc,
             color=utils.COLOR_DEF
         )
 
         titles = data["anilist"]["title"]
-        name_text = "\n".join(f"{flag} {title}" for lang, flag in TITLE_LANGS.items() if (title := titles[lang]))
-        embed.add_field(name="Nome", value=name_text)
+        titles_text = "\n".join(f"{flag} {title}" for lang, flag in TITLE_LANGS.items() if (title := titles[lang]))
+        embed.add_field(name="Nome", value=titles_text)
 
         minutes, seconds = divmod(int(data["from"]), 60)
         info_text = textwrap.dedent(f"""\
             Episódio: **{data.get("episode", "N/A")}**
             Minuto: **{minutes:02d}:{seconds:02d}**
-            Similaridade: **{round(data["similarity"] * 100, 1)}%**
+            Similaridade: **{similarity}%**
         """)
-
         embed.add_field(name="Dados", value=info_text)
+
         embed.set_image(url=data["image"] + "&size=l")
         return embed
 
@@ -143,7 +156,7 @@ async def call_anime_api(img_url: str) -> Embed:
                 return utils.error_embed("O servidor da API está sobrecarregado.")
 
             case _:
-                return utils.error_embed("Algo deu errado.")
+                return utils.error_embed("Ocorreu um erro HTTP com status não catalogado.")
 
 
 def save_gif(tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[float] = None) -> Path:
@@ -166,6 +179,32 @@ def save_gif(tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[
 def normalize_mime(mime: str) -> str:
     """Normalize MIME types. It also removes semicolons because HTML files are goofy."""
     return mime.split("/")[-1].split(";")[0].upper()
+
+
+def handle_shared_errors(error: Exception) -> Embed:
+    """Handles common errors that can occur in image commands."""
+    match error:
+        case FileSizeExceeded():
+            return utils.error_embed("O arquivo enviado é pesado demais para ser processado.")
+
+        case ImageTooBig():
+            return utils.error_embed("A imagem redimensionada é grande demais.")
+
+        case ImageTooSmall():
+            return utils.error_embed("A imagem redimensionada é pequena demais.")
+
+        case UnsupportedProtocol():
+            return utils.error_embed("O URL enviado não é válido.")
+
+        case NotAllowedMime() as err:
+            return utils.error_embed(textwrap.dedent(f"""\
+                O seu arquivo é do tipo inválido \"**{normalize_mime(err.mime)}**\".
+
+                Tipos suportados:
+                {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
+            """))
+        case _:
+            return utils.error_embed("Algo deu errado.")
 
 
 class ImgGroup(Group):
@@ -224,16 +263,6 @@ class ImgGroup(Group):
                 await inter.followup.send(embed=embed)
                 return
 
-            elif image.mime not in ALLOWED_MIMES:
-                embed = utils.error_embed(textwrap.dedent(f"""\
-                    O seu arquivo é do tipo inválido \"**{normalize_mime(image.mime)}**\".
-
-                    Tipos suportados:
-                    {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
-                """))
-                await inter.followup.send(embed=embed)
-                return
-
             temp_file = NamedTemporaryFile(suffix=".gif", delete=False)
             path = save_gif(temp_file, image.content, scale)
 
@@ -241,25 +270,8 @@ class ImgGroup(Group):
             temp_file.close()
             unlink(path)
 
-        except FileSizeExceeded:
-            embed = utils.error_embed("O arquivo enviado é pesado demais para ser processado.")
-            await inter.followup.send(embed=embed)
-
-        except ImageTooBig:
-            embed = utils.error_embed("A imagem redimensionada é grande demais.")
-            await inter.followup.send(embed=embed)
-
-        except ImageTooSmall:
-            embed = utils.error_embed("A imagem redimensionada é pequena demais.")
-            await inter.followup.send(embed=embed)
-
-        except UnsupportedProtocol:
-            embed = utils.error_embed("O URL enviado não é válido.")
-            await inter.followup.send(embed=embed)
-
-        except:
-            embed = utils.error_embed("Algo deu errado.")
-            await inter.followup.send(embed=embed)
+        except Exception as err:
+            await inter.followup.send(embed=handle_shared_errors(err))
 
     @command(
         name="find-anime",
@@ -277,33 +289,21 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.error_embed("Nenhum parâmetro foi fornecido.")
+            embed = utils.error_embed("Você precisa fornecer pelo menos um URL ou Arquivo.")
             await inter.followup.send(embed=embed)
             return
 
-        elif url:
-            if url.startswith("http:") or url.startswith("https:"):
-                embed = await call_anime_api(url)
+        try:
+            if url:
+                embed = await call_anime_api(await ImageHandler.from_url(url))
                 await inter.followup.send(embed=embed)
 
-        elif file:
-            embed = await call_anime_api(quote(file.url))
-            await inter.followup.send(embed=embed)
+            elif file:
+                embed = await call_anime_api(await ImageHandler.from_attachment(file))
+                await inter.followup.send(embed=embed)
 
-
-# For some reason, this doesn't work inside the image group
-@context_menu(name="Encontrar Anime")
-async def findanime_menu(inter: Interaction, message: Message) -> None:
-    await inter.response.defer()
-
-    image = utils.get_image_from_message(message, ignore_url=True)
-    if image and not image.startswith("https://api.trace.moe"):
-        embed = await call_anime_api(image)
-        await inter.followup.send(embed=embed)
-
-    else:
-        embed = utils.error_embed("Nenhuma imagem foi encontrada na mensagem.")
-        await inter.followup.send(embed=embed)
+        except Exception as err:
+            await inter.followup.send(embed=handle_shared_errors(err))
 
 
 class FileSizeExceeded(Exception):
@@ -318,6 +318,10 @@ class ImageTooBig(Exception):
     pass
 
 
+class NotAllowedMime(Exception):
+    def __init__(self, mime: str) -> None:
+        self.mime = mime
+
+
 async def setup(bot: CustomBot) -> None:
     bot.tree.add_command(ImgGroup(bot))
-    bot.tree.add_command(findanime_menu)

@@ -1,7 +1,7 @@
 """Multipurpose variables and functions."""
 
 from enum import Enum
-from discord import Colour, Embed, Interaction, Message, Permissions, ButtonStyle
+from discord import Colour, Embed, Interaction, Permissions, ButtonStyle
 from discord.ext.commands import Context
 from discord.ui import View, button, Button
 from typing import Any, Union, Optional
@@ -30,28 +30,6 @@ class Timestamp(Enum):
 def error_embed(error_desc: Union[str, Exception], *, title: Optional[str] = None) -> Embed:
     """Returns a generic error embed."""
     return Embed(title=title, description=error_desc, color=COLOR_ERROR)
-
-
-def get_image_from_message(message: Message, *, ignore_url: bool = False) -> str | None:
-    """Tries to fetch a image URL using a send message."""
-    image = None
-    if message.attachments:
-        image = message.attachments[0].url
-        return image
-
-    elif message.embeds:
-        image = message.embeds[0].image.url
-        if image:
-            return image
-
-        image = message.embeds[0].url
-        if image and not ignore_url:
-            return image
-
-        image = message.embeds[0].thumbnail.url
-        if image:
-            return image
-    return image
 
 
 async def remove_mentions(message: str, via: Union[Context, Interaction]) -> str:
