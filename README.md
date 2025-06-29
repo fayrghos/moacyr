@@ -1,11 +1,11 @@
 # Moacyr
 
-Moacyr is a multipurpose Discord bot in early development stage, written in Python 3 and based in the discord.py library.
+Moacyr is a multipurpose Discord bot in early development stage, written in Python 3 and based on the discord.py library.
 
 [Invite to Server](https://discord.com/oauth2/authorize?client_id=1117573431202947082&permissions=274878285888&integration_type=0&scope=bot) | [Command List](https://fayrghos.github.io/moacyr-web/commands)
 
 ## Features
-- Run code commands in many popular languages
+- Execute code in many popular languages
 - Create user binds to easily save text snippets
 - Integration with Steam Community and Workshop
 - Find an anime by uploading one of its frames.
@@ -31,7 +31,7 @@ Set up the following environment variables in your system in order to proceed. N
 > The project also supports .env files for environment configuration.
 
 ### Native Installation
-You can simply install Python 3.11 (or later) along with the project dependencies. I highly recommend creating a [Virtual Environment](https://docs.python.org/3/library/venv.html), especially in Linux environments.
+You can simply install Python 3.12 (or later) along with the project dependencies. I highly recommend creating a [Virtual Environment](https://docs.python.org/3/library/venv.html), especially in Linux environments.
 
 ```bash
 # Installing dependencies
@@ -41,18 +41,20 @@ pip install -r requirements.txt
 python main.py
 ```
 
-### Docker Installation
-Alternatively, a pre-configured Dockerfile is available for a quicker setup.
+### Containerized Installation
+Alternatively, a preconfigured Dockerfile is available for a quicker setup. It should be compatible with both Docker and Podman.
 
 ``` bash
 # Building the image
-sudo docker build --tag moacyr-311 .
+docker build --tag moacyr:3.12 .
 
 # Running
-sudo docker run --name moacyr moacyr-311
+# Replace "token_here" with the actual token
+docker run --name moacyr --env BOT_TOKEN=token_here moacyr:3.12
 ```
+If you're using Podman, simply replace `docker` with `podman` in the above commands.
 
 ## Web APIs Credits
 - [Steam](https://steamcommunity.com/dev/) - General communication with Steam.
-- [Wandbox](https://github.com/melpon/wandbox/blob/master/kennel/API.md) - Code running in many languages.
+- [Wandbox](https://github.com/melpon/wandbox) - Code running in many languages.
 - [Trace.moe](https://soruly.github.io/trace.moe-api/) - Anime frame searching.
