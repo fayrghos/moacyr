@@ -38,39 +38,27 @@ class SteamAPI:
         raise InvalidSteamKey("The provided Steam key could not be validated.")
 
     @staticmethod
-    def __kwargs_on_post(kwargs: dict[str, Any]) -> dict[str, Any]:
-        """Converts kwargs to valid data tables."""
-        kwargs_out: dict[str, Any] = {}
+    def __kwargs_to_query(kwargs: dict[str, Any]) -> str:
+        """Converts kwargs to query strings."""
+        kwargs_out: str = ""
         for key, value in kwargs.items():
             # "stuffs=[123, 321]"
             if isinstance(value, list):
                 values: list[tuple[int, Any]] = list(enumerate(value))
                 for pair in values:
-                    kwargs_out[f"{key}[{pair[0]}]"] = pair[1]
+                    kwargs_out += f"&{key}[{pair[0]}]={pair[1]}"
                 continue
 
             # "stuff=123"
-            kwargs_out[key] = value
+            kwargs_out += f"&{key}={value}"
 
         return kwargs_out
-
-    @staticmethod
-    def __kwargs_on_get(kwargs: dict[str, Any]) -> str:
-        """Converts kwargs to query strings."""
-        return "".join([f"&{key}={value}" for key, value in kwargs.items()])
 
     async def get(self, interface: str, version: int, **kwargs) -> Response:
         """Sends a async GET request to the Steam API."""
         async with httpx.AsyncClient() as client:
             response = await client.get(f"https://api.steampowered.com/{interface}/v{version}/?key={self.api_key}" +
-                                        self.__kwargs_on_get(kwargs))
-        return response
-
-    async def post(self, interface: str, version: int, **kwargs) -> Response:
-        """Sends a async POST request to the Steam API."""
-        async with httpx.AsyncClient() as client:
-            response = await client.post(f"https://api.steampowered.com/{interface}/v{version}/?key={self.api_key}",
-                                         data=self.__kwargs_on_post(kwargs))
+                                        self.__kwargs_to_query(kwargs))
         return response
 
 
@@ -208,10 +196,10 @@ class SteamWorkItem:
     async def from_url(cls, url: str) -> Self:
         """Fetches a Steam Workshop item using its URL or ID."""
         if match := re.search(r"([0-9]+)$", url):
-            response = await api.post("ISteamRemoteStorage/GetPublishedFileDetails",
-                                      1,
-                                      itemcount=1,
-                                      publishedfileids=[match.group(1)])
+            response = await api.get("IPublishedFileService/GetDetails",
+                                     1,
+                                     itemcount=1,
+                                     publishedfileids=[match.group(1)])
             data: dict[str, Any] = response.json()
             if response.status_code == 200 and data["response"]["publishedfiledetails"][0]["result"] == 1:
                 return cls(match.group(1), data["response"]["publishedfiledetails"][0])
@@ -222,26 +210,27 @@ class SteamWorkItem:
                  workid: str,
                  details: dict[str, Any]) -> None:
         """Should not be called directly, use `from_url` instead."""
-        self.details = details
+        self.r_details = details
         self.id = workid
 
-        self.title: str = details["title"]
-        self.preview: str = details["preview_url"]
+        self.title: str = self.r_details["title"]
+        self.preview: str = self.r_details["preview_url"]
         self.url: str = f"https://steamcommunity.com/sharedfiles/filedetails/?id={self.id}"
+        self.tags: str = ", ".join([tag["display_name"] for tag in self.r_details["tags"]])
 
-        self.view_amount: int = details["views"]
-        self.sub_amount: int = details["subscriptions"]
-        self.sub_amount_life: int = details["lifetime_subscriptions"]
-        self.fav_amount: int = details["favorited"]
-        self.fav_amount_life: int = details["lifetime_favorited"]
+        self.view_amount: int = self.r_details["views"]
+        self.sub_amount: int = self.r_details["subscriptions"]
+        self.sub_amount_life: int = self.r_details["lifetime_subscriptions"]
+        self.fav_amount: int = self.r_details["favorited"]
+        self.fav_amount_life: int = self.r_details["lifetime_favorited"]
 
         self.file_size: int = int(details["file_size"])
-        self.create_date: int = details["time_created"]
-        self.update_date: int = details["time_updated"]
+        self.create_date: int = self.r_details["time_created"]
+        self.update_date: int = self.r_details["time_updated"]
 
     @property
     def description(self) -> str:
-        return re.sub(r"(\[/?[^\]]+\])|(https?://\S+)", "", self.details["description"])
+        return re.sub(r"(\[/?[^\]]+\])|(https?://\S+)", "", self.r_details["file_description"])
 
 
 class SteamGroup(Group):
@@ -341,6 +330,7 @@ class SteamGroup(Group):
                           color=COLOR_STEAM)
             embed.add_field(name="Dados", value=data_field)
             embed.add_field(name="Estatísticas", value=stats_field)
+            embed.add_field(name="Tags", value=item.tags, inline=False)
             embed.set_thumbnail(url=item.preview)
             await inter.followup.send(embed=embed)
 
