@@ -1,159 +1,232 @@
 """Steam-related commands."""
 
-# This code is a mess and has too much spaghetti
-# TODO: Rewrite this from scratch! ...and please nuke the requests lib!
-
-from discord import Interaction
+from textwrap import dedent, shorten
+from typing import Any, Optional, Self
+from discord import Embed, Interaction, Colour
 from discord.app_commands import Group, command, rename
-from requests import HTTPError
+from httpx import Response
 from src.bot import CustomBot
-from steam.steamid import SteamID, from_url, from_csgo_friend_code
-from steam.webapi import WebAPI
-from requests.exceptions import ConnectionError
-from src.config import BotConfig
+from src.utils import Timestamp, error_embed, to_timestamp
 from src.envs import STEAM_KEY
-from typing import Any
 
-import discord
-import src.utils as utils
 import re
-import textwrap
-import asyncio
+import httpx
 
 
-cfg = BotConfig()
-cfg.parse_section("Steam", {
-    "desclen": 350,
-})
-
-FAVICON: str = (
-    "https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/apps/"
-    "753/1d0167575d746dadea7706685c0f3c01c8aeb6d8.jpg"
-)
-MAX_DESC_LENGTH = cfg.getint("Steam", "desclen")
+CONST_ID64 = 0x0110000100000000
 PRIV_TEXT = "[PRIVADO]"
-
-COLOR_STEAM = discord.Colour.from_rgb(40, 71, 101)
-
-if STEAM_KEY:
-    api = WebAPI(key=STEAM_KEY, http_timeout=10)
+COLOR_STEAM = Colour.from_rgb(40, 71, 101)
+MAX_DESC_LEN = 500
 
 
-async def parse_steamid(inputid: str) -> SteamID:
-    """Tries to converts its arg to a SteamID64."""
-    userid = SteamID(inputid)
-    if userid:
-        return userid
+class SteamAPI:
+    """A class to interact with the Steam API."""
 
-    userid = from_url(f"https://steamcommunity.com/id/{inputid}")
-    if userid:
-        return userid
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
 
-    userid = from_url(inputid)
-    if userid:
-        return userid
+        self.__validate_key()
 
-    userid = from_csgo_friend_code(inputid)
-    if userid:
-        return userid
+    def __validate_key(self) -> None:
+        """Simply checks if the API key is valid."""
+        response = httpx.get(f"https://api.steampowered.com/ISteamWebAPIUtil/GetSupportedAPIList/v1/?key={self.api_key}",
+                             timeout=10)
 
-    raise UnknownSteamID
+        if response.status_code == 200 and response.json()["apilist"]["interfaces"]:
+            return
+        raise InvalidSteamKey
+
+    @staticmethod
+    def __kwargs_on_post(kwargs: dict[str, Any]) -> dict[str, Any]:
+        """Converts kwargs to valid data tables."""
+        kwargs_out: dict[str, Any] = {}
+        for key, value in kwargs.items():
+            # "stuffs=[123, 321]"
+            if isinstance(value, list):
+                values: list[tuple[int, Any]] = list(enumerate(value))
+                for pair in values:
+                    kwargs_out[f"{key}[{pair[0]}]"] = pair[1]
+                continue
+
+            # "stuff=123"
+            kwargs_out[key] = value
+
+        return kwargs_out
+
+    @staticmethod
+    def __kwargs_on_get(kwargs: dict[str, Any]) -> str:
+        """Converts kwargs to query strings."""
+        return "".join([f"&{key}={value}" for key, value in kwargs.items()])
+
+    async def get(self, interface: str, version: int, **kwargs) -> Response:
+        """Sends a async GET request to the Steam API."""
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"https://api.steampowered.com/{interface}/v{version}/?key={self.api_key}" +
+                                        self.__kwargs_on_get(kwargs))
+        return response
+
+    async def post(self, interface: str, version: int, **kwargs) -> Response:
+        """Sends a async POST request to the Steam API."""
+        async with httpx.AsyncClient() as client:
+            response = await client.post(f"https://api.steampowered.com/{interface}/v{version}/?key={self.api_key}",
+                                         data=self.__kwargs_on_post(kwargs))
+        return response
 
 
-class UnknownSteamID(Exception):
-    pass
+api = SteamAPI(STEAM_KEY)
+
+
+class SteamID:
+    """A class to handle SteamID conversions."""
+
+    # Useful SteamID conversion info can be found at:
+    # https://developer.valvesoftware.com/wiki/SteamID
+
+    @classmethod
+    async def from_guess(cls, input_str: str) -> Self:
+        """Tries to convert any input to a 64bit SteamID."""
+        # ID 2
+        if match := re.search(r"STEAM_1:([0-1]):([0-9]+)$", input_str):
+            return cls((int(match.group(2)) * 2) + CONST_ID64 + int(match.group(1)))
+
+        # ID 3
+        if match := re.search(r"\[U:1:([0-9]{1,10})\]$", input_str):
+            return cls(int(match.group(1)) + CONST_ID64)
+
+        # ID 64
+        if match := re.search(r"([0-9]{17})/?$", input_str):
+            return cls(int(match.group(1)))
+
+        # ID 32
+        if match := re.search(r"([0-9]{1,10})/?$", input_str):
+            return cls(int(match.group(1)) + CONST_ID64)
+
+        # Vanity
+        if match := re.search(r"([a-zA-Z-0-9_\-]+)/?$", input_str):
+            response = await api.get("ISteamUser/ResolveVanityURL", 1, vanityurl=match.group(1))
+            data: dict[str, Any] = response.json()
+            if response.status_code == 200 and data["response"]["success"] == 1:
+                return cls(int(data["response"]["steamid"]))
+
+        raise IdNotFound
+
+    def __init__(self, id64: int) -> None:
+        """Consider using the class method `guess` to create an instance."""
+        self.id64 = id64
+        self.id32 = self.__to_32()
+        self.steam2 = self.__to_steam2()
+        self.steam3 = self.__to_steam3()
+
+    def __to_32(self) -> int:
+        return self.id64 - CONST_ID64
+
+    def __to_steam2(self) -> str:
+        weird_bit: int = int(bin(self.id64)[-1])
+        return f"STEAM_1:{weird_bit}:{(self.id64 - CONST_ID64 - weird_bit) // 2}"
+
+    def __to_steam3(self) -> str:
+        return f"[U:1:{self.id64 - CONST_ID64}]"
 
 
 class SteamUser:
     """Represents a Steam user."""
 
-    def __init__(self, steamid: SteamID) -> None:
+    @classmethod
+    async def from_steamid(cls, steamid: SteamID) -> Self:
+        """Fetches Steam user details using a SteamID."""
+        summary = await api.get("ISteamUser/GetPlayerSummaries", 2, steamids=steamid.id64)
+        summary = summary.raise_for_status().json()["response"]["players"][0]
+
+        bans = await api.get("ISteamUser/GetPlayerBans", 1, steamids=steamid.id64)
+        bans = bans.raise_for_status().json()["players"][0]
+
+        friends = await api.get("ISteamUser/GetFriendList", 1, steamid=steamid.id64)
+        friends = friends.raise_for_status().json()["friendslist"]["friends"] if friends.status_code == 200 else None
+
+        return cls(steamid, summary, bans, friends)
+
+    def __init__(self,
+                 steamid: SteamID,
+                 summary: dict[str, Any],
+                 bans: dict[str, Any],
+                 friends: Optional[list[dict[str, Any]]]) -> None:
+        """Should not be called directly, use `from_steamid` instead."""
         self.id = steamid
-        self.summary: dict[str, Any] = api.call("ISteamUser.GetPlayerSummaries", steamids=self.id)["response"]["players"][0]
+        self.summary = summary
+        self.bans = bans
+        self.friends = friends
 
-        self._bans = None
-        self._friendnum = None
+        self.name: str = self.summary["personaname"]
+        self.avatar: str = self.summary["avatarfull"]
+        self.url = f"https://steamcommunity.com/profiles/{self.id.id64}"
 
-    @property
-    def bans(self) -> dict[str, Any]:
-        if not self._bans:
-            self._bans = api.call("ISteamUser.GetPlayerBans", steamids=self.id)["players"][0]
-        return self._bans
+        self.vacban_amount: int = self.bans["NumberOfVACBans"]
+        self.gameban_amount: int = self.bans["NumberOfGameBans"]
+        self.days_no_ban: int = self.bans["DaysSinceLastBan"]
 
-    @property
-    def friendnum(self) -> int | str:
-        if not self._friendnum:
-            try:
-                self._friendnum = len(api.call("ISteamUser.GetFriendList", steamid=self.id)["friendslist"]["friends"])
-            except HTTPError:
-                self._friendnum = PRIV_TEXT
-        return self._friendnum
+        self.vacban_status: bool = self.bans["VACBanned"]
+        self.gameban_status: bool = self.bans["NumberOfGameBans"] > 0
+        self.commban_status: bool = self.bans["CommunityBanned"]
+        self.tradeban_status: bool = self.bans["EconomyBan"] != "none"
 
-    @property
-    def avatar(self) -> str:
-        return self.summary["avatarfull"]
+        self.join: Optional[int] = self.summary.get("timecreated")
+        self.seen: Optional[int] = self.summary.get("lastlogoff")
 
     @property
-    def name(self) -> str:
-        return self.summary["personaname"]
+    def friend_amount(self) -> Optional[int]:
+        if self.friends:
+            return len(self.friends)
+        return None
 
     @property
-    def join_date(self) -> str:
-        return utils.to_timestamp(self.summary.get("timecreated"), utils.Timestamp.ShortDate) or PRIV_TEXT
-
-    @property
-    def seen_date(self) -> str:
-        return utils.to_timestamp(self.summary.get("lastlogoff"), utils.Timestamp.Relative) or PRIV_TEXT
-
-    @property
-    def vacbanned(self) -> bool:
-        return self.bans["VACBanned"]
-
-    @property
-    def vacban_num(self) -> int:
-        return self.bans["NumberOfVACBans"]
-
-    @property
-    def commbanned(self) -> bool:
-        return self.bans["CommunityBanned"]
-
-    @property
-    def gamebanned(self) -> bool:
-        return self.bans["NumberOfGameBans"] != 0
-
-    @property
-    def gameban_num(self) -> int:
-        return self.bans["NumberOfGameBans"]
-
-    @property
-    def tradebanned(self) -> bool:
-        return self.bans["EconomyBan"] != "none"
+    def country(self) -> Optional[str]:
+        country: Optional[str] = self.summary.get("loccountrycode")
+        if country:
+            return f":flag_{country.lower()}:"
+        return None
 
 
-class WorkshopItem:
+class SteamWorkItem:
     """Represents a Steam Workshop item."""
 
-    def __init__(self, info: dict[str, Any]) -> None:
-        self.name: str = info["title"]
-        self.preview: str = info["preview_url"]
-        self.description: str = self._normalize_desc(info["description"])
+    @classmethod
+    async def from_url(cls, url: str) -> Self:
+        """Fetches a Steam Workshop item using its URL or ID."""
+        if match := re.search(r"([0-9]+)$", url):
+            response = await api.post("ISteamRemoteStorage/GetPublishedFileDetails",
+                                      1,
+                                      itemcount=1,
+                                      publishedfileids=[match.group(1)])
+            data: dict[str, Any] = response.json()
+            if response.status_code == 200 and data["response"]["publishedfiledetails"][0]["result"] == 1:
+                return cls(match.group(1), data["response"]["publishedfiledetails"][0])
 
-        self.view_count: str = format(info["views"], ",")
-        self.sub_count: str = format(info["subscriptions"], ",")
-        self.fav_count: str = format(info["favorited"], ",")
-        self.life_sub_count: str = format(info["lifetime_subscriptions"], ",")
-        self.life_fav_count: str = format(info["lifetime_favorited"], ",")
+        raise IdNotFound
 
-        self.file_size: float = round(int(info["file_size"]) / (2**20), 2)
-        self.create_date: str = utils.to_timestamp(info["time_created"])
-        self.update_date: str = utils.to_timestamp(info["time_updated"])
+    def __init__(self,
+                 workid: str,
+                 details: dict[str, Any]) -> None:
+        """Should not be called directly, use `from_url` instead."""
+        self.details = details
+        self.id = workid
 
-    def _normalize_desc(self, desc: str) -> str:
-        """Removes html tags, hyperlinks and shorten the description."""
-        new_desc = re.sub(r"\[/?[^\]]+\]", "", desc)
-        new_desc = re.sub(r"https?://\S+", "", new_desc)
-        new_desc = textwrap.shorten(new_desc, MAX_DESC_LENGTH)
-        return new_desc
+        self.title: str = details["title"]
+        self.preview: str = details["preview_url"]
+        self.url: str = f"https://steamcommunity.com/sharedfiles/filedetails/?id={self.id}"
+
+        self.view_amount: int = details["views"]
+        self.sub_amount: int = details["subscriptions"]
+        self.sub_amount_life: int = details["lifetime_subscriptions"]
+        self.fav_amount: int = details["favorited"]
+        self.fav_amount_life: int = details["lifetime_favorited"]
+
+        self.file_size: int = int(details["file_size"])
+        self.create_date: int = details["time_created"]
+        self.update_date: int = details["time_updated"]
+
+    @property
+    def description(self) -> str:
+        return re.sub(r"(\[/?[^\]]+\])|(https?://\S+)", "", self.details["description"])
 
 
 class SteamGroup(Group):
@@ -162,138 +235,118 @@ class SteamGroup(Group):
         super().__init__(name="steam", description="Comandos relacionados ao Steam.")
         self.bot = bot
 
-    @command(name="userid")
-    @rename(req_userid="user")
-    async def getid(self, inter: Interaction, req_userid: str) -> None:
-        """Exibe uma lista dos IDs de um usuário Steam.
+    @command()
+    @rename(given_id="id")
+    async def user(self, inter: Interaction, given_id: str) -> None:
+        """Exibe informações sobre algum usuário Steam.
 
         Args:
-            req_userid: Qualquer SteamID ou URL.
+            given_id: Qualquer SteamID ou URL do perfil.
         """
         await inter.response.defer()
-        for _ in range(3):
-            try:
-                user = SteamUser(await parse_steamid(req_userid))
+        try:
+            userid = await SteamID.from_guess(given_id)
+            user = await SteamUser.from_steamid(userid)
 
-                general_info = textwrap.dedent(f"""\
-                    **Criação:** {user.join_date}
-                    **Visto:** {user.seen_date}
-                    **Amigos:** {user.friendnum}
-                """)
+            desc: str = dedent(f"""
+                Criado: **{to_timestamp(user.join, Timestamp.LongDate) if user.join else PRIV_TEXT}**
+                Visto: **{to_timestamp(user.seen, Timestamp.LongDate) if user.seen else PRIV_TEXT}**
+                Amigos: **{user.friend_amount or PRIV_TEXT}**
+                País: **{user.country or PRIV_TEXT}**
+            """)
 
-                id_info = textwrap.dedent(f"""\
-                    **ID:** {user.id.as_steam2}
-                    **ID3:** {user.id.as_steam3}
-                    **ID32:** {user.id.as_32}
-                    **ID64:** {user.id}
-                    **CS2:** {user.id.as_csgo_friend_code}
-                    **Add:** {user.id.invite_url}
-                """)
+            ids_field: str = dedent(f"""
+                ID2: **{user.id.steam2}**
+                ID3: **{user.id.steam3}**
+                ID32: **{user.id.id32}**
+                ID64: **{user.id.id64}**
+            """)
 
-                ban_info = ""
-                if user.vacbanned:
-                    ban_info += f"⛔ VAC ({user.vacban_num})\n"
-                if user.gamebanned:
-                    ban_info += f"⛔ Game ({user.gameban_num})\n"
-                if user.commbanned:
-                    ban_info += "⛔ Community\n"
-                if user.tradebanned:
-                    ban_info += "⛔ Trade\n"
-                if not ban_info:
-                    ban_info = "🟢 Nenhum"
-                ban_info.strip()
+            bans: list[str] = []
+            if user.vacban_status:
+                bans.append(f"⛔ VACs ({user.vacban_amount})")
+            if user.gameban_status:
+                bans.append(f"⛔ Jogos ({user.gameban_amount})")
+            if user.commban_status:
+                bans.append("⛔ Comunidade")
+            if user.tradeban_status:
+                bans.append("⛔ Trocas")
+            if not bans:
+                bans.append("🟢 Nenhum")
+            bans_field: str = "\n".join(bans)
 
-                embed = discord.Embed(title=user.name.upper(),
-                                      description=general_info,
-                                      url=f"https://steamcommunity.com/profiles/{user.id}",
-                                      color=COLOR_STEAM)
-                embed.set_thumbnail(url=user.avatar)
-                embed.add_field(name="Identificadores", value=id_info)
-                embed.add_field(name="Banimentos", value=ban_info)
-                embed.set_footer(text="Steam Community", icon_url=FAVICON)
+            embed = Embed(description=desc,
+                          color=COLOR_STEAM,
+                          title=user.name.upper(),
+                          url=user.url)
+            embed.set_thumbnail(url=user.avatar)
+            embed.add_field(name="Banimentos", value=bans_field, inline=False)
+            embed.add_field(name="Steam IDs", value=ids_field, inline=False)
+            await inter.followup.send(embed=embed)
 
-                await inter.followup.send(embed=embed)
-                return
+        except IdNotFound:
+            embed = error_embed("Nenhum jogador foi encontrado.\n" +
+                                "Esse comando aceita URLs de perfil e qualquer formato de SteamID.")
+            await inter.followup.send(embed=embed)
 
-            except ConnectionError:
-                await asyncio.sleep(1)
-
-            except UnknownSteamID:
-                embed = utils.error_embed("Não foi possível obter informações desse usuário.\nEsse comando aceita apenas SteamIDs e URLs.")
-                await inter.followup.send(embed=embed)
-                return
-
-            except Exception:
-                embed = utils.error_embed("Algo deu errado.")
-                await inter.followup.send(embed=embed)
-                return
-
-        # This will only be called if the connection fails
-        embed = utils.error_embed("A conexão com a API do Steam falhou após 3 tentativas.")
-        await inter.followup.send(embed=embed)
+        except:
+            embed = error_embed("Algo deu errado.")
+            await inter.followup.send(embed=embed)
 
     @command()
-    @rename(req_workid="item")
-    async def workshop(self, inter: Interaction, req_workid: str) -> None:
-        """Exibe informações sobre um item na Oficina Steam
+    @rename(given_id="id")
+    async def workshop(self, inter: Interaction, given_id: str) -> None:
+        """Exibe informações sobre um item da Oficina Steam
 
         Args:
-            req_workid: ID ou URL do item.
+            given_id: O ID ou o URL de um item na oficina.
         """
         await inter.response.defer()
+        try:
+            item = await SteamWorkItem.from_url(given_id)
 
-        workshop_id = re.sub(r"\D+", "", req_workid)
-        if not workshop_id:
-            embed = utils.error_embed("Você inseriu um ID/URL inválido.")
+            data_field: str = dedent(f"""
+                ID: **{item.id}**
+                Tamanho: **{round(item.file_size / (2**20), 2)} MiB**
+                Postado: **{to_timestamp(item.create_date, Timestamp.ShortDate)}**
+                Atualizado: **{to_timestamp(item.update_date, Timestamp.ShortDate)}**
+            """)
+
+            stats_field: str = dedent(f"""
+                👁️ {format(item.view_amount, ",")}
+                📥 {format(item.sub_amount, ",")} ({format(item.sub_amount_life, ",")} no total)
+                ⭐ {format(item.fav_amount, ",")} ({format(item.fav_amount_life, ",")} no total)
+            """)
+
+            embed = Embed(description=shorten(item.description, MAX_DESC_LEN),
+                          title=item.title.upper(),
+                          url=item.url,
+                          color=COLOR_STEAM)
+            embed.add_field(name="Dados", value=data_field)
+            embed.add_field(name="Estatísticas", value=stats_field)
+            embed.set_thumbnail(url=item.preview)
             await inter.followup.send(embed=embed)
-            return
 
-        for _ in range(3):
-            try:
-                request = api.call("ISteamRemoteStorage.GetPublishedFileDetails",
-                                   itemcount=1,
-                                   publishedfileids=[workshop_id])
-                item = WorkshopItem(request["response"]["publishedfiledetails"][0])
+        except IdNotFound:
+            embed = error_embed("Nenhum item na oficina foi encontrado.\n" +
+                                "Esse comando aceita IDs de item ou sua respectiva URL.")
+            await inter.followup.send(embed=embed)
 
-                info_field = textwrap.dedent(f"""
-                    **Tamanho:** {item.file_size} MB
-                    **Postado:** {item.create_date}
-                    **Atualizado:** {item.update_date}
-                """)
+        except:
+            embed = error_embed("Algo deu errado.")
+            await inter.followup.send(embed=embed)
 
-                stat_field = textwrap.dedent(f"""
-                    👁️ {item.view_count}
-                    📥 {item.sub_count} ({item.life_sub_count} únicos)
-                    ⭐ {item.fav_count} ({item.life_fav_count} únicos)
-                """)
 
-                embed = discord.Embed(title=item.name.upper(),
-                                      description=item.description,
-                                      url=f"https://steamcommunity.com/sharedfiles/filedetails/?id={workshop_id}",
-                                      color=COLOR_STEAM)
-                embed.set_thumbnail(url=item.preview)
-                embed.add_field(name="Propriedades", value=info_field)
-                embed.add_field(name="Estatísticas", value=stat_field)
-                embed.set_footer(text=f"Steam Workshop • {workshop_id}", icon_url=FAVICON)
+class IdNotFound(Exception):
+    pass
 
-                await inter.followup.send(embed=embed)
-                return
 
-            except ConnectionError:
-                await asyncio.sleep(1)
-
-            except Exception:
-                embed = utils.error_embed("Não foi possível obter informações sobre esse item.")
-                await inter.followup.send(embed=embed)
-                return
-
-        # This will only be called if the connection fails
-        embed = utils.error_embed("A conexão com a API do Steam falhou após 3 tentativas.")
-        await inter.followup.send(embed=embed)
+class InvalidSteamKey(Exception):
+    pass
 
 
 async def setup(bot: CustomBot) -> None:
     if not STEAM_KEY:
-        print("Cannot find a Steam API key. Skipping Steam related commands...")
+        print("The Steam key is blank. Skipping Steam commands...")
         return
     bot.tree.add_command(SteamGroup(bot))
