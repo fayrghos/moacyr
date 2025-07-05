@@ -1,5 +1,6 @@
 """Steam-related commands."""
 
+import asyncio
 from textwrap import dedent, shorten
 from typing import Any, Optional, Self
 from discord import Embed, Interaction, Colour
@@ -14,7 +15,7 @@ import httpx
 
 
 CONST_ID64 = 0x0110000100000000
-PRIV_TEXT = "[PRIVADO]"
+PRIV_TEXT = "[Privado]"
 COLOR_STEAM = Colour.from_rgb(40, 71, 101)
 MAX_DESC_LEN = 500
 
@@ -31,10 +32,10 @@ class SteamAPI:
         """Simply checks if the API key is valid."""
         response = httpx.get(f"https://api.steampowered.com/ISteamWebAPIUtil/GetSupportedAPIList/v1/?key={self.api_key}",
                              timeout=10)
-
         if response.status_code == 200 and response.json()["apilist"]["interfaces"]:
             return
-        raise InvalidSteamKey
+
+        raise InvalidSteamKey("The provided Steam key could not be validated.")
 
     @staticmethod
     def __kwargs_on_post(kwargs: dict[str, Any]) -> dict[str, Any]:
@@ -71,9 +72,6 @@ class SteamAPI:
             response = await client.post(f"https://api.steampowered.com/{interface}/v{version}/?key={self.api_key}",
                                          data=self.__kwargs_on_post(kwargs))
         return response
-
-
-api = SteamAPI(STEAM_KEY)
 
 
 class SteamID:
@@ -134,56 +132,73 @@ class SteamUser:
     @classmethod
     async def from_steamid(cls, steamid: SteamID) -> Self:
         """Fetches Steam user details using a SteamID."""
-        summary = await api.get("ISteamUser/GetPlayerSummaries", 2, steamids=steamid.id64)
-        summary = summary.raise_for_status().json()["response"]["players"][0]
+        summ, bans, friends, level, customs = await asyncio.gather(
+            api.get("ISteamUser/GetPlayerSummaries", 2, steamids=steamid.id64),
+            api.get("ISteamUser/GetPlayerBans", 1, steamids=steamid.id64),
+            api.get("ISteamUser/GetFriendList", 1, steamid=steamid.id64),
+            api.get("IPlayerService/GetSteamLevel", 1, steamid=steamid.id64),
+            api.get("IPlayerService/GetProfileItemsEquipped", 1, steamid=steamid.id64)
+        )
 
-        bans = await api.get("ISteamUser/GetPlayerBans", 1, steamids=steamid.id64)
+        summ = summ.raise_for_status().json()["response"]["players"][0]
         bans = bans.raise_for_status().json()["players"][0]
-
-        friends = await api.get("ISteamUser/GetFriendList", 1, steamid=steamid.id64)
         friends = friends.raise_for_status().json()["friendslist"]["friends"] if friends.status_code == 200 else None
+        level = level.raise_for_status().json()["response"]
+        customs = customs.raise_for_status().json()["response"]
 
-        return cls(steamid, summary, bans, friends)
+        return cls(steamid, summ, bans, friends, level, customs)
 
     def __init__(self,
                  steamid: SteamID,
                  summary: dict[str, Any],
                  bans: dict[str, Any],
-                 friends: Optional[list[dict[str, Any]]]) -> None:
+                 friends: Optional[list[dict[str, Any]]],
+                 level: dict[str, Any],
+                 customs: dict[str, dict[str, Any]]) -> None:
         """Should not be called directly, use `from_steamid` instead."""
         self.id = steamid
-        self.summary = summary
-        self.bans = bans
-        self.friends = friends
+        self.r_summary = summary
+        self.r_bans = bans
+        self.r_friends = friends
+        self.r_level = level
+        self.r_customs = customs
 
-        self.name: str = self.summary["personaname"]
-        self.avatar: str = self.summary["avatarfull"]
+        self.name: str = self.r_summary["personaname"]
+        self.avatar: str = self.r_summary["avatarfull"]
         self.url = f"https://steamcommunity.com/profiles/{self.id.id64}"
+        self.level: Optional[int] = self.r_level.get("player_level", None)
 
-        self.vacban_amount: int = self.bans["NumberOfVACBans"]
-        self.gameban_amount: int = self.bans["NumberOfGameBans"]
-        self.days_no_ban: int = self.bans["DaysSinceLastBan"]
+        self.vacban_amount: int = self.r_bans["NumberOfVACBans"]
+        self.gameban_amount: int = self.r_bans["NumberOfGameBans"]
+        self.days_no_ban: int = self.r_bans["DaysSinceLastBan"]
 
-        self.vacban_status: bool = self.bans["VACBanned"]
-        self.gameban_status: bool = self.bans["NumberOfGameBans"] > 0
-        self.commban_status: bool = self.bans["CommunityBanned"]
-        self.tradeban_status: bool = self.bans["EconomyBan"] != "none"
+        self.vacban_status: bool = self.r_bans["VACBanned"]
+        self.gameban_status: bool = self.r_bans["NumberOfGameBans"] > 0
+        self.commban_status: bool = self.r_bans["CommunityBanned"]
+        self.tradeban_status: bool = self.r_bans["EconomyBan"] != "none"
 
-        self.join: Optional[int] = self.summary.get("timecreated")
-        self.seen: Optional[int] = self.summary.get("lastlogoff")
+        self.join: Optional[int] = self.r_summary.get("timecreated")
+        self.seen: Optional[int] = self.r_summary.get("lastlogoff")
 
     @property
     def friend_amount(self) -> Optional[int]:
-        if self.friends:
-            return len(self.friends)
+        if self.r_friends:
+            return len(self.r_friends)
         return None
 
     @property
     def country(self) -> Optional[str]:
-        country: Optional[str] = self.summary.get("loccountrycode")
+        country: Optional[str] = self.r_summary.get("loccountrycode")
         if country:
             return f":flag_{country.lower()}:"
         return None
+
+    @property
+    def background(self) -> str:
+        url: Optional[str] = self.r_customs["profile_background"].get("image_large")
+        if url:
+            return f"https://steamcdn-a.akamaihd.net/steamcommunity/public/images/{url}"
+        return "https://steamcommunity-a.akamaihd.net/public/images/profile/2020/bg_dots.png"
 
 
 class SteamWorkItem:
@@ -249,6 +264,7 @@ class SteamGroup(Group):
             user = await SteamUser.from_steamid(userid)
 
             desc: str = dedent(f"""
+                Nível: **{user.level if user.level is not None else PRIV_TEXT}**
                 Criado: **{to_timestamp(user.join, Timestamp.LongDate) if user.join else PRIV_TEXT}**
                 Visto: **{to_timestamp(user.seen, Timestamp.LongDate) if user.seen else PRIV_TEXT}**
                 Amigos: **{user.friend_amount or PRIV_TEXT}**
@@ -282,6 +298,7 @@ class SteamGroup(Group):
             embed.set_thumbnail(url=user.avatar)
             embed.add_field(name="Banimentos", value=bans_field, inline=False)
             embed.add_field(name="Steam IDs", value=ids_field, inline=False)
+            embed.set_image(url=user.background)
             await inter.followup.send(embed=embed)
 
         except IdNotFound:
@@ -346,7 +363,11 @@ class InvalidSteamKey(Exception):
 
 
 async def setup(bot: CustomBot) -> None:
+    global api
+
     if not STEAM_KEY:
         print("The Steam key is blank. Skipping Steam commands...")
         return
+
+    api = SteamAPI(STEAM_KEY)
     bot.tree.add_command(SteamGroup(bot))
