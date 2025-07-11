@@ -1,17 +1,23 @@
 """A subclass for customizing the bot."""
 
-from discord.ext.commands import (Bot, Context, CommandError, CheckFailure,
-                                  ExtensionError)
+import asyncio
+import random
 from typing import NoReturn
-from src.config import BotConfig
-from src.envs import LOG_GUILD, LOG_CHANNEL
-from discord import Interaction
-from discord.app_commands import AppCommandError
 
 import discord
+from discord import Interaction
+from discord.app_commands import AppCommandError
+from discord.ext.commands import (
+    Bot,
+    CheckFailure,
+    CommandError,
+    Context,
+    ExtensionError,
+)
+
 import src.utils as utils
-import random
-import asyncio
+from src.config import BotConfig
+from src.envs import LOG_CHANNEL, LOG_GUILD
 
 
 cfg = BotConfig()

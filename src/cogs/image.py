@@ -1,20 +1,21 @@
 """Image-related commands."""
 
-from discord import Attachment, Interaction, File, Embed
-from discord.app_commands import Group, CheckFailure, command
-from httpx import UnsupportedProtocol
-from typing import Any, Optional, Self
-from PIL import Image
-from pathlib import Path
-from src.bot import CustomBot
-from src.config import BotConfig
-from tempfile import _TemporaryFileWrapper, NamedTemporaryFile
+import textwrap
 from io import BytesIO
 from os import unlink
+from pathlib import Path
+from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
+from typing import Any, Optional, Self
 
 import httpx
-import textwrap
+from discord import Attachment, Embed, File, Interaction
+from discord.app_commands import CheckFailure, Group, command
+from httpx import UnsupportedProtocol
+from PIL import Image
+
 import src.utils as utils
+from src.bot import CustomBot
+from src.config import BotConfig
 
 
 cfg = BotConfig()

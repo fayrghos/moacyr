@@ -3,12 +3,13 @@
 from random import randint, sample, shuffle
 from textwrap import dedent
 from time import time
+
 from discord import Embed, Interaction
-from discord.ext.commands import Cog
-from src.bot import CustomBot
 from discord.app_commands import command
+from discord.ext.commands import Cog
 
 import src.utils as utils
+from src.bot import CustomBot
 
 
 def clean_entries(names: list[str]) -> list[str]:

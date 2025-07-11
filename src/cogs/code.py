@@ -1,17 +1,18 @@
 """Code running commands."""
 
+from dataclasses import dataclass
 from textwrap import dedent
 from typing import Any
-from discord import ButtonStyle, Interaction, TextStyle
-from discord.ui import Modal, TextInput, View, button, Button
-from discord.ext.commands import Cog
-from src.bot import CustomBot
-from dataclasses import dataclass
-from discord.app_commands import Choice, autocomplete, command
 
 import discord
-import src.utils as utils
 import httpx
+from discord import ButtonStyle, Interaction, TextStyle
+from discord.app_commands import Choice, autocomplete, command
+from discord.ext.commands import Cog
+from discord.ui import Button, Modal, TextInput, View, button
+
+import src.utils as utils
+from src.bot import CustomBot
 
 
 MAX_OUTPUT_WIDTH = 600

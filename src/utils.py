@@ -1,12 +1,12 @@
 """Multipurpose variables and functions."""
 
-from enum import Enum
-from discord import Colour, Embed, Interaction, Permissions, ButtonStyle
-from discord.ext.commands import Context
-from discord.ui import View, button, Button
-from typing import Any, Union, Optional
-
 import re
+from enum import Enum
+from typing import Any, Optional, Union
+
+from discord import ButtonStyle, Colour, Embed, Interaction, Permissions
+from discord.ext.commands import Context
+from discord.ui import Button, View, button
 
 
 COLOR_DEF = Colour.from_rgb(147, 112, 219)

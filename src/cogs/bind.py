@@ -1,17 +1,25 @@
 """Bind-related bot commands."""
 
-from discord.interactions import Interaction
-from discord.app_commands import Group, CheckFailure, command, allowed_contexts, autocomplete, Choice
-from discord.ui import Modal, TextInput
-from discord import Embed, Guild, TextStyle
-from src.bot import CustomBot
-from dataclasses import dataclass
-from src.config import BotConfig
-from src.db import BaseDB
-
-import src.utils as utils
 import textwrap
 import time
+from dataclasses import dataclass
+
+from discord import Embed, Guild, TextStyle
+from discord.app_commands import (
+    CheckFailure,
+    Choice,
+    Group,
+    allowed_contexts,
+    autocomplete,
+    command,
+)
+from discord.interactions import Interaction
+from discord.ui import Modal, TextInput
+
+import src.utils as utils
+from src.bot import CustomBot
+from src.config import BotConfig
+from src.db import BaseDB
 
 
 cfg = BotConfig()

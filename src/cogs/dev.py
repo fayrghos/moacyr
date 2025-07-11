@@ -1,13 +1,14 @@
 """Developer-only debug commands."""
 
-from discord.ext.commands import Context, Cog, command
-from src.bot import CustomBot
+import platform
+import textwrap
 from typing import Optional
 
 import discord
+from discord.ext.commands import Cog, Context, command
+
 import src.utils as utils
-import platform
-import textwrap
+from src.bot import CustomBot
 
 
 class DevCog(Cog):

@@ -1,17 +1,18 @@
 """Steam-related commands."""
 
 import asyncio
+import re
 from textwrap import dedent, shorten
 from typing import Any, Optional, Self
-from discord import Embed, Interaction, Colour
+
+import httpx
+from discord import Colour, Embed, Interaction
 from discord.app_commands import Group, command, rename
 from httpx import Response
-from src.bot import CustomBot
-from src.utils import Timestamp, error_embed, to_timestamp
-from src.envs import STEAM_KEY
 
-import re
-import httpx
+from src.bot import CustomBot
+from src.envs import STEAM_KEY
+from src.utils import Timestamp, error_embed, to_timestamp
 
 
 CONST_ID64 = 0x0110000100000000

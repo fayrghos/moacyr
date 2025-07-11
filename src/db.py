@@ -1,10 +1,10 @@
 """A handler for the database."""
 
+import sqlite3
 from os import makedirs, path
 from pathlib import Path
-from src.config import BotConfig
 
-import sqlite3
+from src.config import BotConfig
 
 
 cfg = BotConfig()

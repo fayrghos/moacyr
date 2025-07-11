@@ -1,9 +1,9 @@
 """The heart of the bot."""
 
+import discord
+
 from src.bot import CustomBot
 from src.envs import BOT_TOKEN
-
-import discord
 
 
 intents = discord.Intents.default()
