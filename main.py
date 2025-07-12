@@ -3,8 +3,11 @@
 import discord
 
 from src.bot import CustomBot
+from src.checkup import check_packages
 from src.envs import BOT_TOKEN
 
+
+check_packages()
 
 intents = discord.Intents.default()
 intents.message_content = True
