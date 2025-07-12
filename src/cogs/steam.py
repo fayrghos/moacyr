@@ -303,7 +303,7 @@ class SteamGroup(Group):
     @command()
     @rename(given_id="id")
     async def workshop(self, inter: Interaction, given_id: str) -> None:
-        """Exibe informações sobre um item da Oficina Steam
+        """Exibe informações sobre um item da Oficina Steam.
 
         Args:
             given_id: O ID ou o URL de um item na oficina.
