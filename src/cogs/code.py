@@ -92,8 +92,15 @@ class CodeModal(Modal):
 
     code_field: TextInput = TextInput(
         label="Código Desejado",
-        placeholder="print('Hello, World!')",
+        placeholder="O código a ser compilado e executado.",
         required=True,
+        style=TextStyle.paragraph
+    )
+
+    stdin_field: TextInput = TextInput(
+        label="Entrada de Teclado",
+        placeholder="Entradas para input(), scanf(), Scanner() e derivados, separadas por quebras de linha.",
+        required=False,
         style=TextStyle.paragraph
     )
 
@@ -104,11 +111,13 @@ class CodeModal(Modal):
     async def on_submit(self, inter: Interaction) -> None:
         await inter.response.defer(thinking=True)
         code: str = self.code_field.value
+        stdin: str = self.stdin_field.value
 
         async with httpx.AsyncClient() as client:
             response = await client.post("https://wandbox.org/api/compile.json", json={
                 "code": code,
-                "compiler": self.lang_obj.compiler
+                "compiler": self.lang_obj.compiler,
+                "stdin": stdin
             })
 
         if response.status_code == 500:
