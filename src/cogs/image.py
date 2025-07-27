@@ -71,7 +71,7 @@ class ImageHandler:
                 raise FileSizeExceeded
 
             # Actual request
-            response = await client.get(url)
+            response = await client.get(url, follow_redirects=True)
 
         if response.status_code == 200:
             return cls(
@@ -331,15 +331,13 @@ class ImgGroup(Group):
                      inter: Interaction,
                      caption: str,
                      url: Optional[str],
-                     file: Optional[Attachment],
-                     force_gif: Optional[bool]) -> None:
+                     file: Optional[Attachment]) -> None:
         """Adiciona uma legenda acima de uma imagem.
 
         Args:
             caption: A legenda a ser adicionada.
             url: O URL de alguma imagem da internet.
             file: Um arquivo do seu dispositivo.
-            force_gif: Força a saída a ser um GIF.
         """
         await inter.response.defer()
 
@@ -357,11 +355,7 @@ class ImgGroup(Group):
                 image = await ImageHandler.from_url(url)
             assert image
 
-            extension: str = "png"
-            if image.mime == "image/gif" or force_gif:
-                extension = "gif"
-
-            with NamedTemporaryFile(suffix=f".{extension}") as temp:
+            with NamedTemporaryFile(suffix=".webp") as temp:
                 with Image.open(image.content) as source:
                     bar_height: int = int(source.height * 0.15)
                     font = ImageFont.truetype(FONT, bar_height * 0.6)
@@ -392,19 +386,17 @@ class ImgGroup(Group):
 
                         frames.append(ImageOps.contain(background, (source.width, source.height)))
 
-                    match extension:
-                        case "gif":
-                            frames[0].save(temp.name,
-                                           save_all=True,
-                                           append_images=frames[1:],
-                                           duration=source.info.get("duration", 0),
-                                           loop=0,
-                                           optimize=False)
-                        case "png":
-                            frames[0].save(temp.name,
-                                           optimize=False)
-                        case _:
-                            raise ValueError("Unknown extension.")
+                    if len(frames) > 1:
+                        frames[0].save(temp.name,
+                                       save_all=True,
+                                       append_images=frames[1:],
+                                       duration=source.info.get("duration", 1),
+                                       loop=0,
+                                       optimize=False)
+
+                    else:
+                        frames[0].save(temp.name,
+                                       optimize=False)
 
                     await inter.followup.send(file=File(Path(temp.name)))
 
