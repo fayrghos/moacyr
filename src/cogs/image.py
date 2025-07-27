@@ -198,10 +198,10 @@ def handle_shared_errors(error: Exception) -> Embed:
             return utils.error_embed("O arquivo enviado é pesado demais para ser processado.")
 
         case ImageTooBig():
-            return utils.error_embed("A imagem redimensionada é grande demais.")
+            return utils.error_embed("A imagem resultante é grande demais.")
 
         case ImageTooSmall():
-            return utils.error_embed("A imagem redimensionada é pequena demais.")
+            return utils.error_embed("A imagem resultante é pequena demais.")
 
         case UnsupportedProtocol():
             return utils.error_embed("O URL enviado não é válido.")
@@ -357,6 +357,11 @@ class ImgGroup(Group):
 
             with NamedTemporaryFile(suffix=".webp") as temp:
                 with Image.open(image.content) as source:
+                    if min(source.size) < 64:
+                        raise ImageTooSmall
+                    if max(source.size) > 2048:
+                        raise ImageTooBig
+
                     bar_height: int = int(source.height * 0.15)
                     font = ImageFont.truetype(FONT, bar_height * 0.6)
 
