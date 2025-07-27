@@ -11,7 +11,7 @@ import httpx
 from discord import Attachment, Embed, File, Interaction
 from discord.app_commands import CheckFailure, Group, command
 from httpx import UnsupportedProtocol
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont, ImageOps, ImageSequence
 
 import src.utils as utils
 from src.bot import CustomBot
@@ -30,11 +30,14 @@ IMGS_ENABLED = cfg.getboolean("Images", "enabled")
 MAX_SCALE = cfg.getfloat("Images", "maxscale")
 MIN_SCALE = cfg.getfloat("Images", "minscale")
 
+FONT = "Cantarell-ExtraBold.otf"
+
 ALLOWED_MIMES: tuple[str, ...] = (
     "image/png",
     "image/jpeg",
     "image/bmp",
     "image/webp",
+    "image/gif"
 )
 
 TITLE_LANGS: dict[str, str] = {
@@ -214,6 +217,11 @@ def handle_shared_errors(error: Exception) -> Embed:
             return utils.error_embed("Algo deu errado.")
 
 
+def get_fits(font: ImageFont.FreeTypeFont, width: int) -> int:
+    bbox = font.getbbox("X")
+    return width // int(bbox[2] - bbox[0])
+
+
 class ImgGroup(Group):
 
     def __init__(self, bot: CustomBot) -> None:
@@ -312,6 +320,93 @@ class ImgGroup(Group):
             elif file:
                 embed = await call_anime_api(image=await ImageHandler.from_attachment(file))
                 await inter.followup.send(embed=embed)
+
+        except Exception as err:
+            await inter.followup.send(embed=handle_shared_errors(err))
+
+    @command(
+        name="memefy",
+    )
+    async def memefy(self,
+                     inter: Interaction,
+                     caption: str,
+                     url: Optional[str],
+                     file: Optional[Attachment],
+                     force_gif: Optional[bool]) -> None:
+        """Adiciona uma legenda acima de uma imagem.
+
+        Args:
+            caption: A legenda a ser adicionada.
+            url: O URL de alguma imagem da internet.
+            file: Um arquivo do seu dispositivo.
+            force_gif: Força a saída a ser um GIF.
+        """
+        await inter.response.defer()
+
+        if not file and not url:
+            embed = utils.error_embed("Você precisa fornecer pelo menos um URL ou Arquivo.")
+            await inter.followup.send(embed=embed)
+            return
+
+        image: Optional[ImageHandler] = None
+
+        try:
+            if file:
+                image = await ImageHandler.from_attachment(file)
+            elif url:
+                image = await ImageHandler.from_url(url)
+            assert image
+
+            extension: str = "png"
+            if image.mime == "image/gif" or force_gif:
+                extension = "gif"
+
+            with NamedTemporaryFile(suffix=f".{extension}") as temp:
+                with Image.open(image.content) as source:
+                    bar_height: int = int(source.height * 0.15)
+                    font = ImageFont.truetype(FONT, bar_height * 0.6)
+
+                    wraps: list[str] = textwrap.wrap(caption, get_fits(font, source.width))
+
+                    final_text: str = "\n".join(wraps)
+                    line_amount: int = len(wraps)
+
+                    bar_height += int(font.size * (line_amount - 1))
+
+                    frames: list[Image.Image] = []
+                    for _ in ImageSequence.Iterator(source):
+                        background = Image.new("RGBA",
+                                               (source.width, source.height + bar_height),
+                                               (255, 255, 255))
+
+                        background.paste(source, (0, bar_height))
+
+                        draw = ImageDraw.Draw(background)
+                        draw.text(text=final_text,
+                                  xy=(background.width / 2, bar_height / 2),
+                                  fill=(0, 0, 0),
+                                  font=font,
+                                  anchor="mm",
+                                  spacing=0,
+                                  align="center")
+
+                        frames.append(ImageOps.contain(background, (source.width, source.height)))
+
+                    match extension:
+                        case "gif":
+                            frames[0].save(temp.name,
+                                           save_all=True,
+                                           append_images=frames[1:],
+                                           duration=source.info.get("duration", 0),
+                                           loop=0,
+                                           optimize=False)
+                        case "png":
+                            frames[0].save(temp.name,
+                                           optimize=False)
+                        case _:
+                            raise ValueError("Unknown extension.")
+
+                    await inter.followup.send(file=File(Path(temp.name)))
 
         except Exception as err:
             await inter.followup.send(embed=handle_shared_errors(err))
