@@ -30,7 +30,7 @@ IMGS_ENABLED = cfg.getboolean("Images", "enabled")
 MAX_SCALE = cfg.getfloat("Images", "maxscale")
 MIN_SCALE = cfg.getfloat("Images", "minscale")
 
-FONT = "Cantarell-ExtraBold.otf"
+FONT = Path("fonts/cantarell/ExtraBold.otf")
 
 ALLOWED_MIMES: tuple[str, ...] = (
     "image/png",
