@@ -35,6 +35,7 @@ ALLOWED_MIMES: tuple[str, ...] = (
     "image/jpeg",
     "image/bmp",
     "image/webp",
+    "image/gif"
 )
 
 TITLE_LANGS: dict[str, str] = {
@@ -61,14 +62,17 @@ class ImageHandler:
 
     @classmethod
     async def from_url(cls, url: str) -> Self:
+        if url.startswith("https://tenor.com/") and not url.endswith(".gif"):
+            url += ".gif"
+
         async with httpx.AsyncClient() as client:
             # Just for checking the content first
-            head = await client.head(url)
+            head = await client.head(url, follow_redirects=True)
             if int(head.headers.get("Content-Length", 0)) > MAX_FILESIZE:
                 raise FileSizeExceeded
 
             # Actual request
-            response = await client.get(url)
+            response = await client.get(head.url)
 
         if response.status_code == 200:
             return cls(
@@ -93,21 +97,11 @@ class ImageHandler:
             raise NotAllowedMime(self.mime)
 
 
-async def call_anime_api(*,
-                         image: Optional[ImageHandler] = None,
-                         tenor_hack_url: Optional[str] = None) -> Embed:
+async def call_anime_api(image: ImageHandler) -> Embed:
     """Returns a Discord embed containing info about an anime frame."""
     async with httpx.AsyncClient() as client:
-        # Since tenor images are weird, but trace.moe supports them
-        if tenor_hack_url:
-            response = await client.get(f"https://api.trace.moe/search?url={tenor_hack_url}&anilistInfo")
-
-        elif image:
-            response = await client.post("https://api.trace.moe/search?anilistInfo",
-                                         files={"image": image.content})
-
-        else:
-            raise ValueError("Both image and tenor hack are None.")
+        response = await client.post("https://api.trace.moe/search?anilistInfo",
+                                     files={"image": image.content})
 
     if response.status_code == 200:
         data: dict[str, Any] = response.json()["result"][0]
@@ -195,10 +189,10 @@ def handle_shared_errors(error: Exception) -> Embed:
             return utils.error_embed("O arquivo enviado é pesado demais para ser processado.")
 
         case ImageTooBig():
-            return utils.error_embed("A imagem redimensionada é grande demais.")
+            return utils.error_embed("A imagem resultante é grande demais.")
 
         case ImageTooSmall():
-            return utils.error_embed("A imagem redimensionada é pequena demais.")
+            return utils.error_embed("A imagem resultante é pequena demais.")
 
         case UnsupportedProtocol():
             return utils.error_embed("O URL enviado não é válido.")
@@ -265,7 +259,7 @@ class ImgGroup(Group):
                 image = await ImageHandler.from_url(url)
             assert image
 
-            if image.mime == "image/gif" or image.url.startswith("https://tenor.com/"):
+            if image.mime == "image/gif":
                 embed = utils.error_embed("Bem... isso já parece ser um GIF.")
                 await inter.followup.send(embed=embed)
                 return
@@ -301,16 +295,12 @@ class ImgGroup(Group):
             return
 
         try:
-            if url and url.startswith("https://tenor.com"):
-                embed = await call_anime_api(tenor_hack_url=url)
+            if file:
+                embed = await call_anime_api(await ImageHandler.from_attachment(file))
                 await inter.followup.send(embed=embed)
 
             elif url:
-                embed = await call_anime_api(image=await ImageHandler.from_url(url))
-                await inter.followup.send(embed=embed)
-
-            elif file:
-                embed = await call_anime_api(image=await ImageHandler.from_attachment(file))
+                embed = await call_anime_api(await ImageHandler.from_url(url))
                 await inter.followup.send(embed=embed)
 
         except Exception as err:
