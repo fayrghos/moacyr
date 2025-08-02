@@ -12,6 +12,9 @@ import src.utils as utils
 from src.bot import CustomBot
 
 
+DICE_LIMIT = 50_000
+
+
 def clean_entries(names: list[str]) -> list[str]:
     """Strips each raffle entry and removes empty ones."""
     final_names: list[str] = []
@@ -104,7 +107,7 @@ class GeneralCog(Cog):
             await inter.followup.send(embed=embed)
             return
 
-        if sides + amount + modifier > 300:
+        if sides + amount + modifier > DICE_LIMIT:
             embed = utils.error_embed("Valores muito grandes foram inseridos.")
             await inter.followup.send(embed=embed)
             return

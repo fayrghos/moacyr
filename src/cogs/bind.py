@@ -26,7 +26,7 @@ cfg = BotConfig()
 cfg.parse_section("Binds", {
     "enabled": "yes",
     "maxnamelen": 25,
-    "maxtextlen": 200,
+    "maxtextlen": 800,
 })
 
 BIND_ENABLED = cfg.getboolean("Binds", "enabled")
