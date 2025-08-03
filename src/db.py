@@ -1,8 +1,10 @@
 """A handler for the database."""
 
 import sqlite3
+from contextlib import contextmanager
 from os import makedirs, path
 from pathlib import Path
+from typing import Generator
 
 from src.config import BotConfig
 
@@ -21,12 +23,19 @@ if not path.exists(DBDIR):
 
 class BaseDB:
     """Represents a generic SQLite database manipulator."""
-    DB = sqlite3.connect(path.join(DBDIR, "master.db"))
+    db = sqlite3.connect(path.join(DBDIR, "master.db"))
 
-    def get_cursor(self) -> sqlite3.Cursor:
+    @contextmanager
+    def get_cursor(self) -> Generator[sqlite3.Cursor, None, None]:
         """Creates a cursor for this database."""
-        return self.DB.cursor()
+        cursor = self.db.cursor()
 
-    def _save(self) -> None:
+        try:
+            yield cursor
+
+        finally:
+            cursor.close()
+
+    def _commit(self) -> None:
         """Updates the database. Should be called after every operation."""
-        self.DB.commit()
+        self.db.commit()

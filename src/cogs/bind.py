@@ -55,37 +55,36 @@ class BindManager(BaseDB):
     def __init__(self) -> None:
         super().__init__()
         if BIND_ENABLED:
-            cursor = self.get_cursor()
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS binds (
-                    "name" TEXT,
-                    "text" TEXT,
-                    "author" INTEGER,
-                    "guild" INTEGER,
-                    "time" INTEGER,
-                    UNIQUE("guild","name")
-                )
-            """)
+            with self.get_cursor() as cursor:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS binds (
+                        "name" TEXT,
+                        "text" TEXT,
+                        "author" INTEGER,
+                        "guild" INTEGER,
+                        "time" INTEGER,
+                        UNIQUE("guild","name")
+                    )
+                """)
         self.complete_cache: dict[tuple[int, int], list[Bind]] = {}
 
     def get_bind(self, name: str, guild: int) -> Bind | None:
         """Returns a Bind from the database."""
-        cursor = self.get_cursor()
-        name = name.lower()
+        with self.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM binds WHERE name=? AND guild=?",
+                           [name.lower(), guild])
+            bind = cursor.fetchone()
 
-        cursor.execute("SELECT * FROM binds WHERE name=? AND guild=?", [name, guild])
-        bind = cursor.fetchone()
-
-        if bind:
-            return Bind(*bind)
-        return None
+            if bind:
+                return Bind(*bind)
+            return None
 
     def get_all_binds(self, author: int, guild: int) -> list[Bind]:
         """Returns many Binds from the database."""
-        cursor = self.get_cursor()
-
-        cursor.execute("SELECT * FROM binds WHERE author=? AND guild=?", [author, guild])
-        binds = cursor.fetchall()
+        with self.get_cursor() as cursor:
+            cursor.execute("SELECT * FROM binds WHERE author=? AND guild=?",
+                           [author, guild])
+            binds = cursor.fetchall()
 
         if binds:
             return [Bind(*bind) for bind in binds]
@@ -98,35 +97,34 @@ class BindManager(BaseDB):
                  guild: int,
                  timestamp: float) -> None:
         """Register a Bind into the database."""
-        cursor = self.get_cursor()
-        name = name.lower()
-
-        cursor.execute("INSERT INTO binds VALUES (?, ?, ?, ?, ?)", [name, text, author, guild, timestamp])
-        self._save()
+        with self.get_cursor() as cursor:
+            cursor.execute("INSERT INTO binds VALUES (?, ?, ?, ?, ?)",
+                           [name.lower(), text, author, guild, timestamp])
+            self._commit()
 
     def edit_bind(self, bind: Bind, new_text: str) -> None:
         """Edits a Bind from the database."""
-        cursor = self.get_cursor()
-
-        cursor.execute("UPDATE binds SET text=? WHERE name=? AND guild=?", [new_text, bind.name, bind.guild])
-        self._save()
+        with self.get_cursor() as cursor:
+            cursor.execute("UPDATE binds SET text=? WHERE name=? AND guild=?",
+                           [new_text, bind.name, bind.guild])
+            self._commit()
 
     def delete_bind(self, bind: Bind) -> None:
         """Deletes a Bind from the database."""
-        cursor = self.get_cursor()
-
-        cursor.execute("DELETE FROM binds WHERE name=? AND guild=?", [bind.name, bind.guild])
-        self._save()
+        with self.get_cursor() as cursor:
+            cursor.execute("DELETE FROM binds WHERE name=? AND guild=?",
+                           [bind.name, bind.guild])
+            self._commit()
 
     def nuke_server_binds(self, guild: int) -> None:
         """Deletes all binds from a server."""
-        cursor = self.get_cursor()
+        with self.get_cursor() as cursor:
+            cursor.execute("DELETE FROM binds WHERE guild=?",
+                           [guild])
+            self._commit()
 
-        cursor.execute("DELETE FROM binds WHERE guild=?", [guild])
-        self._save()
-
-    def _save(self) -> None:
-        super()._save()
+    def _commit(self) -> None:
+        super()._commit()
         self.complete_cache.clear()
 
 
