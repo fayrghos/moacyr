@@ -25,17 +25,17 @@ from src.db import BaseDB
 cfg = BotConfig()
 cfg.parse_section("Binds", {
     "enabled": "yes",
-    "maxnamelen": 25,
-    "maxtextlen": 800,
 })
 
 BIND_ENABLED = cfg.getboolean("Binds", "enabled")
-MAX_NAME_LEN = cfg.getint("Binds", "maxnamelen")
-MAX_TEXT_LEN = cfg.getint("Binds", "maxtextlen")
 
-MIN_NAME_LEN: int = 2
-MIN_TEXT_LEN: int = 3
-TEXT_PLACEHOLDER: str = "De acordo com todas as conhecidas leis da aviação..."
+MIN_NAME_LEN = 2
+MAX_NAME_LEN = 25
+
+MIN_TEXT_LEN = 3
+MAX_TEXT_LEN = 600
+
+TEXT_PLACEHOLDER = "De acordo com todas as conhecidas leis da aviação..."
 
 
 @dataclass

@@ -16,16 +16,11 @@ from discord.ext.commands import (
 )
 
 import src.utils as utils
-from src.config import BotConfig
 from src.envs import LOG_CHANNEL, LOG_GUILD
 
 
-cfg = BotConfig()
-cfg.parse_section("General", {
-    "activcycle": 180
-})
+ACTIV_TIME = 180
 
-ACTIV_TIME = cfg.getint("General", "activcycle")
 
 module_list: tuple[str, ...] = (
     "general",

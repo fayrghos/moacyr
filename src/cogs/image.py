@@ -25,10 +25,12 @@ cfg.parse_section("Images", {
     "minscale": 0.2,
 })
 
-MAX_FILESIZE = 1e7
 IMGS_ENABLED = cfg.getboolean("Images", "enabled")
-MAX_SCALE = cfg.getfloat("Images", "maxscale")
-MIN_SCALE = cfg.getfloat("Images", "minscale")
+
+MAX_FILESIZE = 1e7
+
+MAX_SCALE = 3.0
+MIN_SCALE = 0.2
 
 ALLOWED_MIMES: tuple[str, ...] = (
     "image/png",
