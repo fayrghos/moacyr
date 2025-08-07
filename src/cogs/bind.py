@@ -19,7 +19,7 @@ from discord.ui import Modal, TextInput
 import src.utils as utils
 from src.bot import CustomBot
 from src.config import BotConfig
-from src.db import BaseDB
+from src.db import call_database
 
 
 cfg = BotConfig()
@@ -49,13 +49,12 @@ class Bind:
     time: int
 
 
-class BindManager(BaseDB):
+class BindManager:
     """Represents the Bind Manager system."""
 
     def __init__(self) -> None:
-        super().__init__()
         if BIND_ENABLED:
-            with self.get_cursor() as cursor:
+            with call_database() as (conn, cursor):
                 cursor.execute("""
                     CREATE TABLE IF NOT EXISTS binds (
                         "name" TEXT,
@@ -70,8 +69,12 @@ class BindManager(BaseDB):
 
     def get_bind(self, name: str, guild: int) -> Bind | None:
         """Returns a Bind from the database."""
-        with self.get_cursor() as cursor:
-            cursor.execute("SELECT * FROM binds WHERE name=? AND guild=?",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            SELECT *
+                            FROM binds
+                            WHERE name = ? AND guild = ?
+                           """,
                            [name.lower(), guild])
             bind = cursor.fetchone()
 
@@ -81,8 +84,12 @@ class BindManager(BaseDB):
 
     def get_all_binds(self, author: int, guild: int) -> list[Bind]:
         """Returns many Binds from the database."""
-        with self.get_cursor() as cursor:
-            cursor.execute("SELECT * FROM binds WHERE author=? AND guild=?",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            SELECT *
+                            FROM binds
+                            WHERE author = ? AND guild = ?
+                           """,
                            [author, guild])
             binds = cursor.fetchall()
 
@@ -97,35 +104,44 @@ class BindManager(BaseDB):
                  guild: int,
                  timestamp: float) -> None:
         """Register a Bind into the database."""
-        with self.get_cursor() as cursor:
-            cursor.execute("INSERT INTO binds VALUES (?, ?, ?, ?, ?)",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            INSERT INTO binds
+                            VALUES (?, ?, ?, ?, ?)
+                           """,
                            [name.lower(), text, author, guild, timestamp])
-            self._commit()
+            conn.commit()
 
     def edit_bind(self, bind: Bind, new_text: str) -> None:
         """Edits a Bind from the database."""
-        with self.get_cursor() as cursor:
-            cursor.execute("UPDATE binds SET text=? WHERE name=? AND guild=?",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            UPDATE binds
+                            SET text = ?
+                            WHERE name = ? AND guild = ?
+                           """,
                            [new_text, bind.name, bind.guild])
-            self._commit()
+            conn.commit()
 
     def delete_bind(self, bind: Bind) -> None:
         """Deletes a Bind from the database."""
-        with self.get_cursor() as cursor:
-            cursor.execute("DELETE FROM binds WHERE name=? AND guild=?",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            DELETE FROM binds
+                            WHERE name = ? AND guild = ?
+                           """,
                            [bind.name, bind.guild])
-            self._commit()
+            conn.commit()
 
     def nuke_server_binds(self, guild: int) -> None:
         """Deletes all binds from a server."""
-        with self.get_cursor() as cursor:
-            cursor.execute("DELETE FROM binds WHERE guild=?",
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                            DELETE FROM binds
+                            WHERE guild = ?
+                           """,
                            [guild])
-            self._commit()
-
-    def _commit(self) -> None:
-        super()._commit()
-        self.complete_cache.clear()
+            conn.commit()
 
 
 class BindRegisterModal(Modal):
