@@ -52,19 +52,19 @@ class GeneralCog(Cog):
         await inter.response.defer()
 
         if winners < 1:
-            embed = utils.error_embed("É necessário pelo menos 1 vencedor.")
+            embed = utils.err_embed("É necessário pelo menos 1 vencedor.")
             await inter.followup.send(embed=embed)
             return
 
         entry_list: list[str] = clean_entries(entries.split(","))
         if not entry_list:
-            embed = utils.error_embed("Nenhum participante foi encontrado.")
+            embed = utils.err_embed("Nenhum participante foi encontrado.")
             await inter.followup.send(embed=embed)
             return
 
         entry_count: int = len(entry_list)
         if winners > entry_count:
-            embed = utils.error_embed("A quantidade de vencedores é maior que a de entradas.")
+            embed = utils.err_embed("A quantidade de vencedores é maior que a de entradas.")
             await inter.followup.send(embed=embed)
             return
 
@@ -98,17 +98,17 @@ class GeneralCog(Cog):
         await inter.response.defer()
 
         if amount < 1:
-            embed = utils.error_embed("É necessário lançar pelo menos 1 dado.")
+            embed = utils.err_embed("É necessário lançar pelo menos 1 dado.")
             await inter.followup.send(embed=embed)
             return
 
         if sides < 2:
-            embed = utils.error_embed("Cada dado deve conter pelo menos 2 lados.")
+            embed = utils.err_embed("Cada dado deve conter pelo menos 2 lados.")
             await inter.followup.send(embed=embed)
             return
 
         if sides + amount + modifier > DICE_LIMIT:
-            embed = utils.error_embed("Valores muito grandes foram inseridos.")
+            embed = utils.err_embed("Valores muito grandes foram inseridos.")
             await inter.followup.send(embed=embed)
             return
 

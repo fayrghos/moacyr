@@ -5,8 +5,8 @@ import random
 from typing import NoReturn
 
 import discord
-from discord import Interaction
-from discord.app_commands import AppCommandError
+from discord import Embed, Interaction, InteractionType
+from discord.app_commands import AppCommandError, CommandNotFound
 from discord.ext.commands import (
     Bot,
     CheckFailure,
@@ -81,12 +81,20 @@ class CustomBot(Bot):
         if isinstance(error, CheckFailure):
             return
 
-        # Should always be the last
-        elif self.application and self.application.owner.id == inter.user.id and LOG_CHANNEL:
-            channel = await self.fetch_channel(int(LOG_CHANNEL))
-            if isinstance(channel, discord.TextChannel):
-                embed = utils.error_embed(error, title=error.__class__.__name__)
-                await channel.send(self.application.owner.mention, embed=embed)
+        if isinstance(error, CommandNotFound):
+            return
+
+        if not inter.response.is_done() and inter.type == InteractionType.application_command:
+            await inter.response.send_message(embed=Embed(
+                colour=utils.COLOR_ERR_CRIT,
+                description="Ocorreu um erro não catalogado."
+            ))
+
+        if self.application and self.application.owner.id == inter.user.id and LOG_CHANNEL:
+            log_channel = await self.fetch_channel(int(LOG_CHANNEL))
+            if isinstance(log_channel, discord.TextChannel):
+                embed = utils.err_embed(error, title=error.__class__.__name__)
+                await log_channel.send(self.application.owner.mention, embed=embed)
 
     # Just silencing legacy prefixed commands
     async def on_command_error(self, context: Context, error: CommandError) -> None:
@@ -98,8 +106,8 @@ class CustomBot(Bot):
             try:
                 await self.load_extension("src.cogs." + module_name)
 
-            except ExtensionError as error:
-                print(f"Cannot import cog '{module_name}' ({error}).")
+            except ExtensionError as err:
+                print(f"Cannot import cog '{module_name}' ({err}).")
 
     async def sync_cogs(self) -> None:
         """Syncs the slash commands to Discord."""

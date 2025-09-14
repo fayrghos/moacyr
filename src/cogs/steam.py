@@ -12,7 +12,7 @@ from httpx import Response
 
 from src.bot import CustomBot
 from src.envs import STEAM_KEY
-from src.utils import Timestamp, error_embed, to_timestamp
+from src.utils import Timestamp, err_embed, to_timestamp
 
 
 CONST_ID64 = 0x0110000100000000
@@ -292,12 +292,12 @@ class SteamGroup(Group):
             await inter.followup.send(embed=embed)
 
         except IdNotFound:
-            embed = error_embed("Nenhum jogador foi encontrado.\n" +
-                                "Esse comando aceita URLs de perfil e qualquer formato de SteamID.")
+            embed = err_embed("Nenhum jogador foi encontrado.\n" +
+                              "Esse comando aceita URLs de perfil e qualquer formato de SteamID.")
             await inter.followup.send(embed=embed)
 
         except:
-            embed = error_embed("Algo deu errado.")
+            embed = err_embed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
     @command()
@@ -336,12 +336,12 @@ class SteamGroup(Group):
             await inter.followup.send(embed=embed)
 
         except IdNotFound:
-            embed = error_embed("Nenhum item na oficina foi encontrado.\n" +
-                                "Esse comando aceita IDs de item ou sua respectiva URL.")
+            embed = err_embed("Nenhum item na oficina foi encontrado.\n" +
+                              "Esse comando aceita IDs de item ou sua respectiva URL.")
             await inter.followup.send(embed=embed)
 
         except:
-            embed = error_embed("Algo deu errado.")
+            embed = err_embed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
 

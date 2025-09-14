@@ -258,17 +258,17 @@ def bind_groups_to_embeds(binds: list[list[Bind]]) -> list[Embed]:
 
 def existing_bind_emb(name: str) -> Embed:
     return Embed(description=f"Uma bind nomeada \"**{name.capitalize()}**\" já existe.",
-                 color=utils.COLOR_ERROR)
+                 color=utils.COLOR_ERR)
 
 
 def non_existing_bind_emb() -> Embed:
     return Embed(description=f"Não existe nenhuma bind registrada com esse nome.",
-                 color=utils.COLOR_ERROR)
+                 color=utils.COLOR_ERR)
 
 
 def non_bind_own_emb() -> Embed:
     return Embed(description="Você não é o autor dessa bind.",
-                 color=utils.COLOR_ERROR)
+                 color=utils.COLOR_ERR)
 
 
 bind_manager = BindManager()
@@ -289,7 +289,7 @@ class BindGroup(Group):
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:
         if isinstance(error, CheckFailure):
-            embed = utils.error_embed("As binds não podem ser usadas no momento.")
+            embed = utils.err_embed("As binds não podem ser usadas no momento.")
             await inter.response.send_message(embed=embed)
 
     async def server_leave_deleter(self, guild: Guild) -> None:
@@ -333,12 +333,12 @@ class BindGroup(Group):
             return
 
         if not name.isalnum():
-            embed = utils.error_embed("O nome da sua bind deve conter apenas letras e números.")
+            embed = utils.err_embed("O nome da sua bind deve conter apenas letras e números.")
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         if len(name) > MAX_NAME_LEN or len(name) < MIN_NAME_LEN:
-            embed = utils.error_embed(f"O nome da sua bind deve ter entre {MIN_NAME_LEN} e {MAX_NAME_LEN} caracteres.")
+            embed = utils.err_embed(f"O nome da sua bind deve ter entre {MIN_NAME_LEN} e {MAX_NAME_LEN} caracteres.")
             await inter.response.send_message(embed=embed, ephemeral=True)
 
         modal = BindRegisterModal(name)
@@ -411,7 +411,7 @@ class BindGroup(Group):
         binds = bind_manager.get_all_binds(inter.user.id, inter.guild.id)
         if not binds:
             embed = Embed(description="Você ainda não registrou nenhuma bind nesse servidor.",
-                          color=utils.COLOR_ERROR)
+                          color=utils.COLOR_ERR)
             await inter.followup.send(embed=embed)
             return
 

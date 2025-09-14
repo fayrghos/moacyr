@@ -10,7 +10,8 @@ from discord.ui import Button, View, button
 
 
 COLOR_DEF = Colour.from_rgb(147, 112, 219)
-COLOR_ERROR = Colour.from_rgb(225, 80, 80)
+COLOR_ERR = Colour.from_rgb(225, 80, 80)
+COLOR_ERR_CRIT = Colour.from_rgb(45, 25, 25)
 COLOR_DEBUG = Colour.from_rgb(25, 25, 25)
 
 MAX_COMPLETE_OPTS = 25
@@ -27,9 +28,9 @@ class Timestamp(Enum):
     Relative = ":R"
 
 
-def error_embed(error_desc: Union[str, Exception], *, title: Optional[str] = None) -> Embed:
+def err_embed(err_desc: Union[str, Exception], *, title: Optional[str] = None) -> Embed:
     """Returns a generic error embed."""
-    return Embed(title=title, description=error_desc, color=COLOR_ERROR)
+    return Embed(title=title, description=err_desc, color=COLOR_ERR)
 
 
 async def remove_mentions(message: str, via: Union[Context, Interaction]) -> str:

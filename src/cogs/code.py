@@ -9,7 +9,7 @@ import httpx
 from discord import ButtonStyle, Interaction, TextStyle
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
-from discord.ui import Button, Modal, TextInput, View, button
+from discord.ui import Button, Modal, Select, TextInput, View, button
 
 import src.utils as utils
 from src.bot import CustomBot
@@ -31,8 +31,8 @@ def get_compiler_list() -> list[dict[str, Any]]:
         ]
         return functional_compilers
 
-    except Exception as error:
-        print(f"Cannot connect to WandBox. ({error})")
+    except Exception as err:
+        print(f"Cannot connect to WandBox. ({err})")
         return []
 
 
@@ -121,11 +121,11 @@ class CodeModal(Modal):
             })
 
         if response.status_code == 500:
-            await inter.followup.send(embed=utils.error_embed("O servidor não foi capaz de processar esse código."))
+            await inter.followup.send(embed=utils.err_embed("O servidor não foi capaz de processar esse código."))
             return
 
         elif response.status_code != 200:
-            await inter.followup.send(embed=utils.error_embed("Ocorreu um erro inesperado ao processar esse código."))
+            await inter.followup.send(embed=utils.err_embed("Ocorreu um erro inesperado ao processar esse código."))
             return
 
         data: dict[str, str] = response.json()
@@ -190,7 +190,7 @@ class RunCog(Cog):
                 await inter.response.send_modal(modal)
                 return
 
-        await inter.response.send_message(embed=utils.error_embed("Nenhum compilador foi encontrado."))
+        await inter.response.send_message(embed=utils.err_embed("Nenhum compilador foi encontrado."))
 
 
 async def setup(bot: CustomBot) -> None:
