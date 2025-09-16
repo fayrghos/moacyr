@@ -55,6 +55,7 @@ status_list: list[str] = [
     "Lotus",
     "Sunset",
     "Abyss",
+    "Corrode",
 ]
 
 
