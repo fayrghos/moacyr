@@ -9,7 +9,7 @@ import httpx
 from discord import ButtonStyle, Interaction, TextStyle
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
-from discord.ui import Button, Modal, Select, TextInput, View, button
+from discord.ui import Button, Modal, TextInput, View, button
 
 import src.utils as utils
 from src.bot import CustomBot
