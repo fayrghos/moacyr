@@ -228,8 +228,9 @@ async def bind_complete(inter: Interaction, current: str) -> list[Choice]:
 async def cleanse_text(text: str, inter: Interaction) -> str:
     """Cleanses the text to be used in a bind."""
     new_text = await utils.remove_mentions(text, inter)
-    new_text = new_text.replace("*DEAD*", "\\*DEAD\\*") # TF2 binds
+    new_text = new_text.replace("*DEAD*", "\\*DEAD\\*")  # TF2 binds
     return new_text
+
 
 def split_binds(binds: list[Bind], *, group_size: int = 15) -> list[list[Bind]]:
     """Splits a list of binds. Should be used to create pages."""
@@ -240,6 +241,7 @@ def split_binds(binds: list[Bind], *, group_size: int = 15) -> list[list[Bind]]:
         final_list.append(binds[:group_size])
         binds = binds[group_size:]
     return final_list
+
 
 def bind_groups_to_embeds(binds: list[list[Bind]]) -> list[Embed]:
     """Converts a splitted list of bind groups into a list of embeds."""
