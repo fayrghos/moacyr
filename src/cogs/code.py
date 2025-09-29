@@ -115,9 +115,11 @@ class CodeModal(Modal):
 
     async def on_submit(self, inter: Interaction) -> None:
         await inter.response.defer(thinking=True)
+        assert isinstance(self.code_field.component, TextInput)
+        assert isinstance(self.stdin_field.component, TextInput)
 
-        code: str = self.code_field.component.value  # type: ignore
-        stdin: str = self.stdin_field.component.value  # type: ignore
+        code: str = self.code_field.component.value
+        stdin: str = self.stdin_field.component.value
 
         async with httpx.AsyncClient() as client:
             try:
