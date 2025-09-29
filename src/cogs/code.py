@@ -9,7 +9,7 @@ import httpx
 from discord import ButtonStyle, Interaction, TextStyle
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
-from discord.ui import Button, Modal, TextInput, View, button
+from discord.ui import Button, Label, Modal, TextInput, View, button
 
 import src.utils as utils
 from src.bot import CustomBot
@@ -90,18 +90,22 @@ class CodeLanguage:
 class CodeModal(Modal):
     """Modal used in code eval commands."""
 
-    code_field: TextInput = TextInput(
-        label="Código Desejado",
-        placeholder="O código a ser compilado e executado.",
-        required=True,
-        style=TextStyle.paragraph
+    code_field = Label(
+        text="Código",
+        description="O código a ser compilado.",
+        component=TextInput(
+            style=TextStyle.paragraph,
+            required=True,
+        )
     )
 
-    stdin_field: TextInput = TextInput(
-        label="Entrada de Teclado",
-        placeholder="Entradas para input(), scanf(), Scanner() e derivados, separadas por quebras de linha.",
-        required=False,
-        style=TextStyle.paragraph
+    stdin_field = Label(
+        text="Entrada Padrão",
+        description="Conteúdo para input(), scanf() e derivados, separado por linhas.",
+        component=TextInput(
+            style=TextStyle.paragraph,
+            required=False,
+        )
     )
 
     def __init__(self, lang_obj: CodeLanguage) -> None:
@@ -110,8 +114,9 @@ class CodeModal(Modal):
 
     async def on_submit(self, inter: Interaction) -> None:
         await inter.response.defer(thinking=True)
-        code: str = self.code_field.value
-        stdin: str = self.stdin_field.value
+
+        code: str = self.code_field.component.value  # type: ignore
+        stdin: str = self.stdin_field.component.value  # type: ignore
 
         async with httpx.AsyncClient() as client:
             response = await client.post("https://wandbox.org/api/compile.json", json={
