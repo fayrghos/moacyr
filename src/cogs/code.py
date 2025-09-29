@@ -10,6 +10,7 @@ from discord import ButtonStyle, Interaction, TextStyle
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
 from discord.ui import Button, Label, Modal, TextInput, View, button
+from httpx import ReadTimeout
 
 import src.utils as utils
 from src.bot import CustomBot
@@ -119,18 +120,38 @@ class CodeModal(Modal):
         stdin: str = self.stdin_field.component.value  # type: ignore
 
         async with httpx.AsyncClient() as client:
-            response = await client.post("https://wandbox.org/api/compile.json", json={
-                "code": code,
-                "compiler": self.lang_obj.compiler,
-                "stdin": stdin
-            })
+            try:
+                response = await client.post(
+                    "https://wandbox.org/api/compile.json",
+                    timeout=10,
+                    json={
+                        "code": code,
+                        "compiler": self.lang_obj.compiler,
+                        "stdin": stdin
+                    })
+
+            except ReadTimeout:
+                await inter.followup.send(embed=utils.err_embed(
+                    "O servidor demorou muito tempo para responder."
+                ))
+                return
+
+            except Exception:
+                await inter.followup.send(embed=utils.err_embed(
+                    "Ocorreu um erro desconhecido ao processar a solicitação."
+                ))
+                return
 
         if response.status_code == 500:
-            await inter.followup.send(embed=utils.err_embed("O servidor não foi capaz de processar esse código."))
+            await inter.followup.send(embed=utils.err_embed(
+                "O servidor não foi capaz de processar esse código."
+            ))
             return
 
         elif response.status_code != 200:
-            await inter.followup.send(embed=utils.err_embed("Ocorreu um erro inesperado ao processar esse código."))
+            await inter.followup.send(embed=utils.err_embed(
+                "Ocorreu um erro inesperado ao processar esse código."
+            ))
             return
 
         data: dict[str, str] = response.json()
