@@ -29,6 +29,7 @@ module_list: tuple[str, ...] = (
     "steam",
     "image",
     "code",
+    "unicode",
 )
 
 status_list: list[str] = [
