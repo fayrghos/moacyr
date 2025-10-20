@@ -41,18 +41,14 @@ class UniFont(Enum):
     Fraktur = auto()
     Monospace = auto()
     Calligraphy = auto()
-    Doublestruck = auto()
     Circled = auto()
-    Squared = auto()
 
 
 available_fonts: dict[UniFont, dict[str, str]] = {
     UniFont.Fraktur: generate_font_map(0x1D56C, 0x1D586),
     UniFont.Monospace: generate_font_map(0x1D670, 0x1D68A, 0x1D7F6),
     UniFont.Calligraphy: generate_font_map(0x1D4D0, 0x1D4EA),
-    UniFont.Doublestruck: generate_font_map(0x1D538, 0x1D552, 0x1D7D8),
     UniFont.Circled: generate_font_map(0x24B6, 0x24D0),
-    UniFont.Squared: generate_font_map(0xF130, 0xF130),  # Lowercase unavailable
 }
 
 
