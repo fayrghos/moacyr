@@ -1,9 +1,30 @@
-**/.dockerignore
-**/.gitignore
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
 
-**/.git
-**/*.md
+# Environment
+.venv
+.env
 
-**/__pycache__
-**/.venv/
-**.env
+# Data
+data/
+*.db
+
+# Text
+*.md
+
+# Editors
+.idea/
+.vscode/
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Git
+.git/
+.gitignore

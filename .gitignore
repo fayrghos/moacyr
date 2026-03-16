@@ -8,7 +8,7 @@ wheels/
 
 # Environment
 .venv
-/.env
+.env
 *.ini
 
 # Data
