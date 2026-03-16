@@ -1,8 +1,8 @@
-FROM python:3.12-alpine
+FROM ghcr.io/astral-sh/uv:alpine
 
 WORKDIR /app
 COPY . .
 
-RUN python -m pip install -r requirements.txt
+RUN uv sync
 
-CMD ["python", "-u", "main.py"]
+CMD ["uv", "run", "python", "-u", "main.py"]

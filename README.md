@@ -31,14 +31,10 @@ Set up the following environment variables in your system in order to proceed. N
 > The project also supports .env files for environment configuration.
 
 ### Native Installation
-You can simply install Python 3.12 (or later) along with the project dependencies. I highly recommend creating a [Virtual Environment](https://docs.python.org/3/library/venv.html), especially in Linux environments.
+You will need Python 3.14 or later on your machine. Project dependencies and the virtual environment must be managed using the [uv](https://docs.astral.sh/uv/) package/project manager.
 
 ```bash
-# Installing dependencies
-pip install -r requirements.txt
-
-# Running
-python main.py
+uv run main.py
 ```
 
 ### Containerized Installation
@@ -46,13 +42,13 @@ Alternatively, a preconfigured Dockerfile is available for a quicker setup. It s
 
 ``` bash
 # Building the image
-docker build --tag moacyr:3.12 .
+podman build --tag moacyr:3.14 .
 
 # Running
 # Replace "token_here" with the actual token
-docker run --name moacyr --env BOT_TOKEN=token_here moacyr:3.12
+podman run --name moacyr --env BOT_TOKEN=token_here moacyr:3.14
 ```
-If you're using Podman, simply replace `docker` with `podman` in the above commands.
+If you're using Docker, simply replace `podman` with `docker` in the above commands.
 
 ## Web APIs Credits
 - [Steam](https://steamcommunity.com/dev/) - General communication with Steam.

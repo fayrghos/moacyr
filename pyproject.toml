@@ -1,0 +1,10 @@
+[project]
+name = "moacyr"
+requires-python = ">=3.12"
+dynamic = ["version"]
+dependencies = [
+    "discord-py>=2.7.1",
+    "httpx>=0.28.1",
+    "pillow>=12.1.1",
+    "python-dotenv>=1.2.2",
+]

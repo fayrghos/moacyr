@@ -1,13 +1,20 @@
-# Cache
+# Python-generated files
 __pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
 
-# Config
-*.env
+# Environment
+.venv
+/.env
 *.ini
 
 # Data
 data/
 *.db
 
-# Environment
-.venv/
+# Editors
+.idea/
+.vscode/
