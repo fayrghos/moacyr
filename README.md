@@ -3,7 +3,7 @@
 Moacyr is a multipurpose Discord bot in early development stage, written in Python 3 and based on the discord.py
 library.
 
-[Invite to Server](https://discord.com/oauth2/authorize?client_id=1117573431202947082&permissions=274878285888&integration_type=0&scope=bot) | [Command List](https://fayrghos.github.io/moacyr-web/commands)
+[Invite to Server](https://discord.com/oauth2/authorize?client_id=1117573431202947082&permissions=274878285888&integration_type=0&scope=bot)
 
 ## Features
 
