@@ -3,12 +3,10 @@
 from configparser import ConfigParser
 from pathlib import Path
 
-
 CONFIG_PATH = Path("settings.ini")
 
 
 class BotConfig(ConfigParser):
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.read(CONFIG_PATH)

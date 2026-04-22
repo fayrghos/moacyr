@@ -8,9 +8,8 @@ from discord import Embed, Interaction
 from discord.app_commands import command
 from discord.ext.commands import Cog
 
-import src.utils as utils
-from src.bot import CustomBot
-
+import core.utils as utils
+from core.bot import CustomBot
 
 DICE_LIMIT = 50_000
 
@@ -26,7 +25,6 @@ def clean_entries(names: list[str]) -> list[str]:
 
 
 class GeneralCog(Cog):
-
     def __init__(self, bot: CustomBot) -> None:
         self.bot = bot
 
@@ -64,30 +62,31 @@ class GeneralCog(Cog):
 
         entry_count: int = len(entry_list)
         if winners > entry_count:
-            embed = utils.err_embed("A quantidade de vencedores é maior que a de entradas.")
+            embed = utils.err_embed(
+                "A quantidade de vencedores é maior que a de entradas."
+            )
             await inter.followup.send(embed=embed)
             return
 
         shuffle(entry_list)
         winner_list: list[str] = sample(entry_list, winners)
-        winner_str: str = "\n".join(f"• {winner.capitalize()}" for winner in winner_list)
+        winner_str: str = "\n".join(
+            f"• {winner.capitalize()}" for winner in winner_list
+        )
 
         main_desc: str = dedent(f"""
             Entradas: **{entry_count}**
             Sorteados: **{winners}**
         """)
 
-        embed = Embed(description=main_desc,
-                      color=utils.COLOR_DEF)
+        embed = Embed(description=main_desc, color=utils.COLOR_DEF)
         embed.add_field(name="Vencedores", value=winner_str)
         await inter.followup.send(embed=embed)
 
     @command()
-    async def dice(self,
-                   inter: Interaction,
-                   sides: int = 6,
-                   amount: int = 1,
-                   modifier: int = 0) -> None:
+    async def dice(
+        self, inter: Interaction, sides: int = 6, amount: int = 1, modifier: int = 0
+    ) -> None:
         """Lança um ou mais dados personalizáveis.
 
         Args:
@@ -119,8 +118,10 @@ class GeneralCog(Cog):
         number: int = randint(1, (sides * amount)) + modifier
         dice_note: str = f"{amount}d{sides}{modifier_signal}"
 
-        embed = Embed(description=f"Um **{dice_note}** foi lançado e o resultado foi **{number}**.",
-                      color=utils.COLOR_DEF)
+        embed = Embed(
+            description=f"Um **{dice_note}** foi lançado e o resultado foi **{number}**.",
+            color=utils.COLOR_DEF,
+        )
         await inter.followup.send(embed=embed)
 
     @command()
@@ -140,8 +141,7 @@ class GeneralCog(Cog):
             Latência Adiada: **{diff_defer}ms**
         """)
 
-        embed = Embed(description=desc_str,
-                      color=utils.COLOR_DEF)
+        embed = Embed(description=desc_str, color=utils.COLOR_DEF)
         await inter.followup.send(embed=embed)
 
 

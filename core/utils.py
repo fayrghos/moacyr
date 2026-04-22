@@ -8,7 +8,6 @@ from discord import ButtonStyle, Colour, Embed, Interaction, Permissions
 from discord.ext.commands import Context
 from discord.ui import Button, View, button
 
-
 COLOR_DEF = Colour.from_rgb(147, 112, 219)
 COLOR_ERR = Colour.from_rgb(225, 80, 80)
 COLOR_ERR_CRIT = Colour.from_rgb(45, 25, 25)
@@ -88,13 +87,15 @@ def cooler_shorten(text: str, max_width: int) -> str:
     if max_width <= place_len:
         raise ValueError("The placeholder is hiding the entire text.")
 
-    return text[:max_width - place_len] + place
+    return text[: max_width - place_len] + place
 
 
 class EmbScroller(View):
     """A view to scroll through multiple embeds."""
 
-    def __init__(self, inter: Interaction, embeds: list[Embed], *, timeout: int = 60) -> None:
+    def __init__(
+        self, inter: Interaction, embeds: list[Embed], *, timeout: int = 60
+    ) -> None:
         super().__init__(timeout=timeout)
         self.inter = inter
         self.embeds = embeds

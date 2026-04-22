@@ -2,9 +2,8 @@
 
 import discord
 
-from src.bot import CustomBot
-from src.envs import BOT_TOKEN
-
+from core.bot import CustomBot
+from core.envs import BOT_TOKEN
 
 intents = discord.Intents.default()
 intents.message_content = True

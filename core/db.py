@@ -6,13 +6,15 @@ from pathlib import Path
 from sqlite3 import Connection, Cursor, connect
 from typing import Generator
 
-from src.config import BotConfig
-
+from core.config import BotConfig
 
 cfg = BotConfig()
-cfg.parse_section("General", {
-    "dbdir": "data/",
-})
+cfg.parse_section(
+    "General",
+    {
+        "dbdir": "data/",
+    },
+)
 
 
 DBDIR = Path(cfg.get("General", "dbdir"))

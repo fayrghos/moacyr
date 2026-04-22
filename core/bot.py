@@ -15,9 +15,8 @@ from discord.ext.commands import (
     ExtensionError,
 )
 
-import src.utils as utils
-from src.envs import LOG_CHANNEL, LOG_GUILD
-
+import core.utils as utils
+from core.envs import LOG_CHANNEL, LOG_GUILD
 
 ACTIV_TIME = 180
 
@@ -60,7 +59,6 @@ status_list: list[str] = [
 
 
 class CustomBot(Bot):
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.activity_index: int = 0
@@ -85,13 +83,22 @@ class CustomBot(Bot):
         if isinstance(error, CommandNotFound):
             return
 
-        if not inter.response.is_done() and inter.type == InteractionType.application_command:
-            await inter.response.send_message(embed=Embed(
-                colour=utils.COLOR_ERR_CRIT,
-                description="Ocorreu um erro não catalogado."
-            ))
+        if (
+            not inter.response.is_done()
+            and inter.type == InteractionType.application_command
+        ):
+            await inter.response.send_message(
+                embed=Embed(
+                    colour=utils.COLOR_ERR_CRIT,
+                    description="Ocorreu um erro não catalogado.",
+                )
+            )
 
-        if self.application and self.application.owner.id == inter.user.id and LOG_CHANNEL:
+        if (
+            self.application
+            and self.application.owner.id == inter.user.id
+            and LOG_CHANNEL
+        ):
             log_channel = await self.fetch_channel(int(LOG_CHANNEL))
             if isinstance(log_channel, discord.TextChannel):
                 embed = utils.err_embed(error, title=error.__class__.__name__)
@@ -105,7 +112,7 @@ class CustomBot(Bot):
         """Initializes all bot commands in the given modules."""
         for module_name in module_list:
             try:
-                await self.load_extension("src.cogs." + module_name)
+                await self.load_extension(f"cogs.{module_name}")
 
             except ExtensionError as err:
                 print(f"Cannot import cog '{module_name}' ({err}).")

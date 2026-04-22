@@ -16,16 +16,18 @@ from discord.app_commands import (
 from discord.interactions import Interaction
 from discord.ui import Modal, TextInput
 
-import src.utils as utils
-from src.bot import CustomBot
-from src.config import BotConfig
-from src.db import call_database
-
+import core.utils as utils
+from core.bot import CustomBot
+from core.config import BotConfig
+from core.db import call_database
 
 cfg = BotConfig()
-cfg.parse_section("Binds", {
-    "enabled": "yes",
-})
+cfg.parse_section(
+    "Binds",
+    {
+        "enabled": "yes",
+    },
+)
 
 BIND_ENABLED = cfg.getboolean("Binds", "enabled")
 
@@ -70,12 +72,14 @@ class BindManager:
     def get_bind(self, name: str, guild: int) -> Bind | None:
         """Returns a Bind from the database."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             SELECT *
                             FROM binds
                             WHERE name = ? AND guild = ?
                            """,
-                           [name.lower(), guild])
+                [name.lower(), guild],
+            )
             bind = cursor.fetchone()
 
             if bind:
@@ -85,62 +89,69 @@ class BindManager:
     def get_all_binds(self, author: int, guild: int) -> list[Bind]:
         """Returns many Binds from the database."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             SELECT *
                             FROM binds
                             WHERE author = ? AND guild = ?
                            """,
-                           [author, guild])
+                [author, guild],
+            )
             binds = cursor.fetchall()
 
         if binds:
             return [Bind(*bind) for bind in binds]
         return []
 
-    def add_bind(self,
-                 name: str,
-                 text: str,
-                 author: int,
-                 guild: int,
-                 timestamp: float) -> None:
+    def add_bind(
+        self, name: str, text: str, author: int, guild: int, timestamp: float
+    ) -> None:
         """Register a Bind into the database."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             INSERT INTO binds
                             VALUES (?, ?, ?, ?, ?)
                            """,
-                           [name.lower(), text, author, guild, timestamp])
+                [name.lower(), text, author, guild, timestamp],
+            )
             conn.commit()
 
     def edit_bind(self, bind: Bind, new_text: str) -> None:
         """Edits a Bind from the database."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             UPDATE binds
                             SET text = ?
                             WHERE name = ? AND guild = ?
                            """,
-                           [new_text, bind.name, bind.guild])
+                [new_text, bind.name, bind.guild],
+            )
             conn.commit()
 
     def delete_bind(self, bind: Bind) -> None:
         """Deletes a Bind from the database."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             DELETE FROM binds
                             WHERE name = ? AND guild = ?
                            """,
-                           [bind.name, bind.guild])
+                [bind.name, bind.guild],
+            )
             conn.commit()
 
     def nuke_server_binds(self, guild: int) -> None:
         """Deletes all binds from a server."""
         with call_database() as (conn, cursor):
-            cursor.execute("""
+            cursor.execute(
+                """
                             DELETE FROM binds
                             WHERE guild = ?
                            """,
-                           [guild])
+                [guild],
+            )
             conn.commit()
 
 
@@ -153,7 +164,7 @@ class BindRegisterModal(Modal):
         required=True,
         min_length=MIN_TEXT_LEN,
         max_length=MAX_TEXT_LEN,
-        style=TextStyle.paragraph
+        style=TextStyle.paragraph,
     )
 
     def __init__(self, name: str) -> None:
@@ -167,10 +178,14 @@ class BindRegisterModal(Modal):
         text = self.textfield.value
         text = await cleanse_text(text, inter)
 
-        bind_manager.add_bind(self.name, text, inter.user.id, inter.guild.id, int(time.time()))
+        bind_manager.add_bind(
+            self.name, text, inter.user.id, inter.guild.id, int(time.time())
+        )
 
-        embed = Embed(description=f"Você registrou uma bind com o nome de \"**{self.name.capitalize()}**\"!",
-                      color=utils.COLOR_DEF)
+        embed = Embed(
+            description=f'Você registrou uma bind com o nome de "**{self.name.capitalize()}**"!',
+            color=utils.COLOR_DEF,
+        )
         await inter.followup.send(embed=embed)
 
 
@@ -183,7 +198,7 @@ class BindModifyModal(Modal):
         required=True,
         min_length=MIN_TEXT_LEN,
         max_length=MAX_TEXT_LEN,
-        style=TextStyle.paragraph
+        style=TextStyle.paragraph,
     )
 
     def __init__(self, bind: Bind) -> None:
@@ -197,8 +212,10 @@ class BindModifyModal(Modal):
         text = await cleanse_text(text, inter)
 
         bind_manager.edit_bind(self.bind, text)
-        embed = Embed(description=f"Você editou o texto da bind com o nome de \"**{self.bind.name.capitalize()}**\"!",
-                      color=utils.COLOR_DEF)
+        embed = Embed(
+            description=f'Você editou o texto da bind com o nome de "**{self.bind.name.capitalize()}**"!',
+            color=utils.COLOR_DEF,
+        )
         await inter.followup.send(embed=embed)
 
 
@@ -210,17 +227,21 @@ async def bind_complete(inter: Interaction, current: str) -> list[Choice]:
     # Cache cuz calling the database each time is bad
     user_tuple = (inter.user.id, inter.guild.id)
     if not bind_manager.complete_cache.get(user_tuple):
-        bind_manager.complete_cache[user_tuple] = bind_manager.get_all_binds(inter.user.id, inter.guild.id)
+        bind_manager.complete_cache[user_tuple] = bind_manager.get_all_binds(
+            inter.user.id, inter.guild.id
+        )
 
     if not current:
         return [
             Choice(name=bind.name.capitalize(), value=bind.name)
-            for bind in bind_manager.complete_cache[user_tuple][:utils.MAX_COMPLETE_OPTS]
+            for bind in bind_manager.complete_cache[user_tuple][
+                : utils.MAX_COMPLETE_OPTS
+            ]
         ]
 
     return [
         Choice(name=bind.name.capitalize(), value=bind.name)
-        for bind in bind_manager.complete_cache[user_tuple][:utils.MAX_COMPLETE_OPTS]
+        for bind in bind_manager.complete_cache[user_tuple][: utils.MAX_COMPLETE_OPTS]
         if current in bind.name
     ]
 
@@ -249,9 +270,7 @@ def bind_groups_to_embeds(binds: list[list[Bind]]) -> list[Embed]:
     for group in binds:
         bind_str = "\n".join(f"- {bind.name.capitalize()}" for bind in group)
 
-        embed = (Embed(title="Suas binds:",
-                       description=bind_str,
-                       color=utils.COLOR_DEF))
+        embed = Embed(title="Suas binds:", description=bind_str, color=utils.COLOR_DEF)
         embed.set_footer(text="Válidas somente nesse servidor.")
 
         final_binds.append(embed)
@@ -259,18 +278,21 @@ def bind_groups_to_embeds(binds: list[list[Bind]]) -> list[Embed]:
 
 
 def existing_bind_emb(name: str) -> Embed:
-    return Embed(description=f"Uma bind nomeada \"**{name.capitalize()}**\" já existe.",
-                 color=utils.COLOR_ERR)
+    return Embed(
+        description=f'Uma bind nomeada "**{name.capitalize()}**" já existe.',
+        color=utils.COLOR_ERR,
+    )
 
 
 def non_existing_bind_emb() -> Embed:
-    return Embed(description=f"Não existe nenhuma bind registrada com esse nome.",
-                 color=utils.COLOR_ERR)
+    return Embed(
+        description=f"Não existe nenhuma bind registrada com esse nome.",
+        color=utils.COLOR_ERR,
+    )
 
 
 def non_bind_own_emb() -> Embed:
-    return Embed(description="Você não é o autor dessa bind.",
-                 color=utils.COLOR_ERR)
+    return Embed(description="Você não é o autor dessa bind.", color=utils.COLOR_ERR)
 
 
 bind_manager = BindManager()
@@ -278,10 +300,8 @@ bind_manager = BindManager()
 
 @allowed_contexts(guilds=True, dms=False)
 class BindGroup(Group):
-
     def __init__(self, bot: CustomBot) -> None:
-        super().__init__(name="bind",
-                         description="Comandos relacionados a Binds.")
+        super().__init__(name="bind", description="Comandos relacionados a Binds.")
         self.bot = bot
 
         self.bot.add_listener(self.server_leave_deleter, "on_guild_remove")
@@ -331,16 +351,22 @@ class BindGroup(Group):
 
         bind = bind_manager.get_bind(name, inter.guild.id)
         if bind:
-            await inter.response.send_message(embed=existing_bind_emb(bind.name), ephemeral=True)
+            await inter.response.send_message(
+                embed=existing_bind_emb(bind.name), ephemeral=True
+            )
             return
 
         if not name.isalnum():
-            embed = utils.err_embed("O nome da sua bind deve conter apenas letras e números.")
+            embed = utils.err_embed(
+                "O nome da sua bind deve conter apenas letras e números."
+            )
             await inter.response.send_message(embed=embed, ephemeral=True)
             return
 
         if len(name) > MAX_NAME_LEN or len(name) < MIN_NAME_LEN:
-            embed = utils.err_embed(f"O nome da sua bind deve ter entre {MIN_NAME_LEN} e {MAX_NAME_LEN} caracteres.")
+            embed = utils.err_embed(
+                f"O nome da sua bind deve ter entre {MIN_NAME_LEN} e {MAX_NAME_LEN} caracteres."
+            )
             await inter.response.send_message(embed=embed, ephemeral=True)
 
         modal = BindRegisterModal(name)
@@ -369,8 +395,10 @@ class BindGroup(Group):
             return
 
         bind_manager.delete_bind(bind)
-        embed = Embed(description=f"Você deletou a bind com o nome de \"**{bind.name.capitalize()}**\"!",
-                      color=utils.COLOR_DEF)
+        embed = Embed(
+            description=f'Você deletou a bind com o nome de "**{bind.name.capitalize()}**"!',
+            color=utils.COLOR_DEF,
+        )
         await inter.followup.send(embed=embed)
 
     @command(
@@ -387,7 +415,9 @@ class BindGroup(Group):
 
         bind = bind_manager.get_bind(name, inter.guild.id)
         if not bind:
-            await inter.response.send_message(embed=non_existing_bind_emb(), ephemeral=True)
+            await inter.response.send_message(
+                embed=non_existing_bind_emb(), ephemeral=True
+            )
             return
 
         if bind.author != inter.user.id:
@@ -412,15 +442,19 @@ class BindGroup(Group):
 
         binds = bind_manager.get_all_binds(inter.user.id, inter.guild.id)
         if not binds:
-            embed = Embed(description="Você ainda não registrou nenhuma bind nesse servidor.",
-                          color=utils.COLOR_ERR)
+            embed = Embed(
+                description="Você ainda não registrou nenhuma bind nesse servidor.",
+                color=utils.COLOR_ERR,
+            )
             await inter.followup.send(embed=embed)
             return
 
         splitted_binds = split_binds(binds)
         embeds = bind_groups_to_embeds(splitted_binds)
 
-        await inter.followup.send(embed=embeds[0], view=utils.EmbScroller(inter, embeds))
+        await inter.followup.send(
+            embed=embeds[0], view=utils.EmbScroller(inter, embeds)
+        )
 
     @command(
         name="info",
@@ -449,9 +483,9 @@ class BindGroup(Group):
             ```
         """)
 
-        embed = Embed(description=desc,
-                      color=utils.COLOR_DEF,
-                      title=bind.name.capitalize())
+        embed = Embed(
+            description=desc, color=utils.COLOR_DEF, title=bind.name.capitalize()
+        )
         embed.set_footer(text="Válida somente nesse servidor.")
         await inter.followup.send(embed=embed)
 

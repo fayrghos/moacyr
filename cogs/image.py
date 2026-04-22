@@ -13,17 +13,19 @@ from discord.app_commands import CheckFailure, Group, command
 from httpx import UnsupportedProtocol
 from PIL import Image
 
-import src.utils as utils
-from src.bot import CustomBot
-from src.config import BotConfig
-
+import core.utils as utils
+from core.bot import CustomBot
+from core.config import BotConfig
 
 cfg = BotConfig()
-cfg.parse_section("Images", {
-    "enabled": "yes",
-    "maxscale": 3.0,
-    "minscale": 0.2,
-})
+cfg.parse_section(
+    "Images",
+    {
+        "enabled": "yes",
+        "maxscale": 3.0,
+        "minscale": 0.2,
+    },
+)
 
 IMGS_ENABLED = cfg.getboolean("Images", "enabled")
 
@@ -37,7 +39,7 @@ ALLOWED_MIMES: tuple[str, ...] = (
     "image/jpeg",
     "image/bmp",
     "image/webp",
-    "image/gif"
+    "image/gif",
 )
 
 TITLE_LANGS: dict[str, str] = {
@@ -59,7 +61,7 @@ class ImageHandler:
             url=attach.url,
             content=await attach.read(),
             mime=attach.content_type,
-            size=attach.size
+            size=attach.size,
         )
 
     @classmethod
@@ -81,15 +83,13 @@ class ImageHandler:
                 url=url,
                 content=response.content,
                 mime=response.headers.get("Content-Type"),
-                size=len(response.content)
+                size=len(response.content),
             )
         raise ValueError("For some reason, the image is None.")
 
-    def __init__(self,
-                 url: str,
-                 content: bytes,
-                 mime: Optional[str],
-                 size: int) -> None:
+    def __init__(
+        self, url: str, content: bytes, mime: Optional[str], size: int
+    ) -> None:
         self.url = url
         self.content = BytesIO(content)
         self.mime = mime or "application/octet-stream"
@@ -102,29 +102,32 @@ class ImageHandler:
 async def call_anime_api(image: ImageHandler) -> Embed:
     """Returns a Discord embed containing info about an anime frame."""
     async with httpx.AsyncClient() as client:
-        response = await client.post("https://api.trace.moe/search?anilistInfo",
-                                     files={"image": image.content})
+        response = await client.post(
+            "https://api.trace.moe/search?anilistInfo", files={"image": image.content}
+        )
 
     if response.status_code == 200:
         data: dict[str, Any] = response.json()["result"][0]
 
         if data["anilist"]["isAdult"]:
-            return utils.err_embed("O melhor palpite não pode ser exibido pois encontrou conteúdo adulto.")
+            return utils.err_embed(
+                "O melhor palpite não pode ser exibido pois encontrou conteúdo adulto."
+            )
 
         similarity: int = round(data["similarity"] * 100, 1)
-        desc: str = f"[Clique para conhecer o anime.](<https://anilist.co/anime/{data["anilist"]["id"]}>)"
+        desc: str = f"[Clique para conhecer o anime.](<https://anilist.co/anime/{data['anilist']['id']}>)"
 
         if similarity < 90:
             desc += "\n\n⚠️ Similaridades abaixo de **90%** geralmente exibem erros."
 
-        embed = Embed(
-            title="Melhor Palpite",
-            description=desc,
-            color=utils.COLOR_DEF
-        )
+        embed = Embed(title="Melhor Palpite", description=desc, color=utils.COLOR_DEF)
 
         titles = data["anilist"]["title"]
-        titles_text = "\n".join(f"{flag} {title}" for lang, flag in TITLE_LANGS.items() if (title := titles[lang]))
+        titles_text = "\n".join(
+            f"{flag} {title}"
+            for lang, flag in TITLE_LANGS.items()
+            if (title := titles[lang])
+        )
         embed.add_field(name="Nome", value=titles_text)
 
         minutes, seconds = divmod(int(data["from"]), 60)
@@ -141,13 +144,19 @@ async def call_anime_api(image: ImageHandler) -> Embed:
     else:
         match response.status_code:
             case 400:
-                return utils.err_embed("A API não foi capaz de decodificar a imagem enviada.")
+                return utils.err_embed(
+                    "A API não foi capaz de decodificar a imagem enviada."
+                )
 
             case 403 | 404:
-                return utils.err_embed("A API não conseguiu extrair imagens do URL enviado.")
+                return utils.err_embed(
+                    "A API não conseguiu extrair imagens do URL enviado."
+                )
 
             case 405:
-                return utils.err_embed("A API relatou que o método HTTP usado foi incorreto.")
+                return utils.err_embed(
+                    "A API relatou que o método HTTP usado foi incorreto."
+                )
 
             case 500:
                 return utils.err_embed("O servidor da API relatou um erro interno.")
@@ -159,10 +168,14 @@ async def call_anime_api(image: ImageHandler) -> Embed:
                 return utils.err_embed("O servidor da API está sobrecarregado.")
 
             case _:
-                return utils.err_embed("Ocorreu um erro HTTP com status não catalogado.")
+                return utils.err_embed(
+                    "Ocorreu um erro HTTP com status não catalogado."
+                )
 
 
-def save_gif(tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[float] = None) -> Path:
+def save_gif(
+    tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[float] = None
+) -> Path:
     """Converts a image BytesIO to a GIF then saves it."""
     with Image.open(imgbytes) as file:
         if scale:
@@ -188,7 +201,9 @@ def handle_shared_errors(error: Exception) -> Embed:
     """Handles common errors that can occur in image commands."""
     match error:
         case FileSizeExceeded():
-            return utils.err_embed("O arquivo enviado é pesado demais para ser processado.")
+            return utils.err_embed(
+                "O arquivo enviado é pesado demais para ser processado."
+            )
 
         case ImageTooBig():
             return utils.err_embed("A imagem resultante é grande demais.")
@@ -200,21 +215,23 @@ def handle_shared_errors(error: Exception) -> Embed:
             return utils.err_embed("O URL enviado não é válido.")
 
         case NotAllowedMime() as err:
-            return utils.err_embed(textwrap.dedent(f"""\
+            return utils.err_embed(
+                textwrap.dedent(f"""\
                 O seu arquivo é do tipo inválido \"**{normalize_mime(err.mime)}**\".
 
                 Tipos suportados:
                 {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
-            """))
+            """)
+            )
         case _:
             return utils.err_embed("Algo deu errado.")
 
 
 class ImgGroup(Group):
-
     def __init__(self, bot: CustomBot) -> None:
-        super().__init__(name="image",
-                         description="Comandos relacionados a interações com imagens.")
+        super().__init__(
+            name="image", description="Comandos relacionados a interações com imagens."
+        )
         self.bot = bot
 
     async def interaction_check(self, inter: Interaction) -> bool:
@@ -222,17 +239,21 @@ class ImgGroup(Group):
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:
         if isinstance(error, CheckFailure):
-            embed = utils.err_embed("Os comandos de imagem estão desativados no momento")
+            embed = utils.err_embed(
+                "Os comandos de imagem estão desativados no momento"
+            )
             await inter.response.send_message(embed=embed)
 
     @command(
         name="make-gif",
     )
-    async def makegif(self,
-                      inter: Interaction,
-                      url: Optional[str],
-                      file: Optional[Attachment],
-                      scale: float = 1.0) -> None:
+    async def makegif(
+        self,
+        inter: Interaction,
+        url: Optional[str],
+        file: Optional[Attachment],
+        scale: float = 1.0,
+    ) -> None:
         """Transforma uma imagem em um GIF estático.
 
         Args:
@@ -243,12 +264,16 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.err_embed("Você precisa fornecer pelo menos um URL ou Arquivo.")
+            embed = utils.err_embed(
+                "Você precisa fornecer pelo menos um URL ou Arquivo."
+            )
             await inter.followup.send(embed=embed)
             return
 
         if scale > MAX_SCALE or scale < MIN_SCALE:
-            embed = utils.err_embed(f"A escala só pode ir de {MIN_SCALE}x até {MAX_SCALE}x.")
+            embed = utils.err_embed(
+                f"A escala só pode ir de {MIN_SCALE}x até {MAX_SCALE}x."
+            )
             await inter.followup.send(embed=embed)
             return
 
@@ -279,10 +304,9 @@ class ImgGroup(Group):
     @command(
         name="find-anime",
     )
-    async def findanime(self,
-                        inter: Interaction,
-                        url: Optional[str],
-                        file: Optional[Attachment]) -> None:
+    async def findanime(
+        self, inter: Interaction, url: Optional[str], file: Optional[Attachment]
+    ) -> None:
         """Descubra o nome de um anime usando um frame dele.
 
         Args:
@@ -292,7 +316,9 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.err_embed("Você precisa fornecer pelo menos um URL ou Arquivo.")
+            embed = utils.err_embed(
+                "Você precisa fornecer pelo menos um URL ou Arquivo."
+            )
             await inter.followup.send(embed=embed)
             return
 

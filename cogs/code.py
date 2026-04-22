@@ -12,9 +12,8 @@ from discord.ext.commands import Cog
 from discord.ui import Button, Label, Modal, TextInput, View, button
 from httpx import ReadTimeout
 
-import src.utils as utils
-from src.bot import CustomBot
-
+import core.utils as utils
+from core.bot import CustomBot
 
 MAX_OUTPUT_WIDTH = 600
 
@@ -27,7 +26,8 @@ def get_compiler_list() -> list[dict[str, Any]]:
 
         # Head compilers don't work
         functional_compilers = [
-            compiler for compiler in response
+            compiler
+            for compiler in response
             if "head" not in compiler.get("name", "").lower()
         ]
         return functional_compilers
@@ -71,7 +71,9 @@ async def compiler_complete(inter: Interaction, current: str) -> list[Choice]:
             continue
 
         if compiler and current.lower() in language.lower():
-            max_choice_list.append(Choice(name=f"{language} @ {compiler}", value=compiler))
+            max_choice_list.append(
+                Choice(name=f"{language} @ {compiler}", value=compiler)
+            )
     return max_choice_list
 
 
@@ -97,7 +99,7 @@ class CodeModal(Modal):
         component=TextInput(
             style=TextStyle.paragraph,
             required=True,
-        )
+        ),
     )
 
     stdin_field = Label(
@@ -106,7 +108,7 @@ class CodeModal(Modal):
         component=TextInput(
             style=TextStyle.paragraph,
             required=False,
-        )
+        ),
     )
 
     def __init__(self, lang_obj: CodeLanguage) -> None:
@@ -129,35 +131,46 @@ class CodeModal(Modal):
                     json={
                         "code": code,
                         "compiler": self.lang_obj.compiler,
-                        "stdin": stdin
-                    })
+                        "stdin": stdin,
+                    },
+                )
 
             except ReadTimeout:
-                await inter.followup.send(embed=utils.err_embed(
-                    "O servidor demorou muito tempo para responder."
-                ))
+                await inter.followup.send(
+                    embed=utils.err_embed(
+                        "O servidor demorou muito tempo para responder."
+                    )
+                )
                 return
 
             except Exception:
-                await inter.followup.send(embed=utils.err_embed(
-                    "Ocorreu um erro desconhecido ao processar a solicitação."
-                ))
+                await inter.followup.send(
+                    embed=utils.err_embed(
+                        "Ocorreu um erro desconhecido ao processar a solicitação."
+                    )
+                )
                 return
 
         if response.status_code == 500:
-            await inter.followup.send(embed=utils.err_embed(
-                "O servidor não foi capaz de processar esse código."
-            ))
+            await inter.followup.send(
+                embed=utils.err_embed(
+                    "O servidor não foi capaz de processar esse código."
+                )
+            )
             return
 
         elif response.status_code != 200:
-            await inter.followup.send(embed=utils.err_embed(
-                "Ocorreu um erro inesperado ao processar esse código."
-            ))
+            await inter.followup.send(
+                embed=utils.err_embed(
+                    "Ocorreu um erro inesperado ao processar esse código."
+                )
+            )
             return
 
         data: dict[str, str] = response.json()
-        prog_message: str = data.get("program_message") or data.get("compiler_message") or "<NENHUMA>"
+        prog_message: str = (
+            data.get("program_message") or data.get("compiler_message") or "<NENHUMA>"
+        )
         status: str = data.get("status") or data.get("signal") or "Desconhecido"
 
         desc = dedent(f"""\
@@ -166,14 +179,15 @@ class CodeModal(Modal):
             ```{utils.cooler_shorten(prog_message, MAX_OUTPUT_WIDTH)}```
         """)
 
-        embed = discord.Embed(title=f"{self.lang_obj.display}",
-                              description=desc,
-                              color=utils.COLOR_DEBUG)
-        await inter.followup.send(embed=embed, view=DisplayCodeView(inter, self.lang_obj, code))
+        embed = discord.Embed(
+            title=f"{self.lang_obj.display}", description=desc, color=utils.COLOR_DEBUG
+        )
+        await inter.followup.send(
+            embed=embed, view=DisplayCodeView(inter, self.lang_obj, code)
+        )
 
 
 class DisplayCodeView(View):
-
     def __init__(self, inter: Interaction, lang: CodeLanguage, code: str) -> None:
         super().__init__(timeout=120)
         self.inter = inter
@@ -188,11 +202,12 @@ class DisplayCodeView(View):
 
     @button(label="Ver Código", style=ButtonStyle.secondary)
     async def display_code(self, inter: Interaction, button: Button) -> None:
-        await inter.response.send_message(f"```{self.lang.display}\n{self.code}```", ephemeral=True)
+        await inter.response.send_message(
+            f"```{self.lang.display}\n{self.code}```", ephemeral=True
+        )
 
 
 class RunCog(Cog):
-
     def __init__(self, bot: CustomBot) -> None:
         self.bot = bot
 
@@ -212,13 +227,15 @@ class RunCog(Cog):
                 compiler = CodeLanguage(
                     compiler.get("language", "???"),
                     compiler.get("version", "???"),
-                    requested_lang
+                    requested_lang,
                 )
                 modal = CodeModal(compiler)
                 await inter.response.send_modal(modal)
                 return
 
-        await inter.response.send_message(embed=utils.err_embed("Nenhum compilador foi encontrado."))
+        await inter.response.send_message(
+            embed=utils.err_embed("Nenhum compilador foi encontrado.")
+        )
 
 
 async def setup(bot: CustomBot) -> None:

@@ -7,12 +7,11 @@ from typing import Optional
 import discord
 from discord.ext.commands import Cog, Context, command
 
-import src.utils as utils
-from src.bot import CustomBot
+import core.utils as utils
+from core.bot import CustomBot
 
 
 class DevCog(Cog):
-
     def __init__(self, bot: CustomBot) -> None:
         self.bot = bot
 
@@ -21,19 +20,13 @@ class DevCog(Cog):
             return ctx.author.id == self.bot.application.owner.id
         return False
 
-    @command(
-        aliases=["kill"],
-        hidden=True
-    )
+    @command(aliases=["kill"], hidden=True)
     async def shutdown(self, ctx: Context) -> None:
         """Ragequits."""
         await ctx.message.add_reaction("💤")
         await self.bot.close()
 
-    @command(
-        aliases=["del"],
-        hidden=True
-    )
+    @command(aliases=["del"], hidden=True)
     async def delmsg(self, ctx: Context, req_msg: int, req_chan: Optional[int]) -> None:
         """Deletes a message using message and channel IDs."""
         try:
@@ -49,9 +42,7 @@ class DevCog(Cog):
         except Exception:
             await ctx.message.add_reaction("❔")
 
-    @command(
-        hidden=True
-    )
+    @command(hidden=True)
     async def guildperms(self, ctx: Context) -> None:
         """Prints all guild permissions."""
         if not ctx.guild:
@@ -61,12 +52,12 @@ class DevCog(Cog):
         for perm, value in sorted(ctx.guild.me.guild_permissions):
             perm_str += f"{'🟢' if value else '🔴'} {perm.capitalize()}\n"
 
-        embed = discord.Embed(title="Permissões (Guilda)", description=perm_str, color=utils.COLOR_DEBUG)
+        embed = discord.Embed(
+            title="Permissões (Guilda)", description=perm_str, color=utils.COLOR_DEBUG
+        )
         await ctx.send(embed=embed)
 
-    @command(
-        hidden=True
-    )
+    @command(hidden=True)
     async def channelperms(self, ctx: Context) -> None:
         """Prints all channel permissions."""
         if not ctx.guild or not isinstance(ctx.me, discord.Member):
@@ -76,12 +67,12 @@ class DevCog(Cog):
         for perm, value in sorted(ctx.channel.permissions_for(ctx.me)):
             perm_str += f"{'🟢' if value else '🔴'} {perm.capitalize()}\n"
 
-        embed = discord.Embed(title="Permissões (Canal)", description=perm_str, color=utils.COLOR_DEBUG)
+        embed = discord.Embed(
+            title="Permissões (Canal)", description=perm_str, color=utils.COLOR_DEBUG
+        )
         await ctx.send(embed=embed)
 
-    @command(
-        hidden=True
-    )
+    @command(hidden=True)
     async def info(self, ctx: Context) -> None:
         """Prints some system information."""
         system = platform.system()
