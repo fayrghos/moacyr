@@ -2,6 +2,7 @@
 
 import asyncio
 import random
+from logging import getLogger
 from typing import NoReturn
 
 import discord
@@ -20,6 +21,7 @@ from core.envs import LOG_CHANNEL, LOG_GUILD
 
 ACTIV_TIME = 180
 
+logger = getLogger(__name__)
 
 module_list: tuple[str, ...] = (
     "general",
@@ -74,7 +76,7 @@ class CustomBot(Bot):
         await self.init_cogs()
         await self.sync_cogs()
 
-        print("Let's roll.")
+        logger.info("Let's roll.")
 
     async def on_slash_error(self, inter: Interaction, error: AppCommandError) -> None:
         if isinstance(error, CheckFailure):
@@ -115,7 +117,7 @@ class CustomBot(Bot):
                 await self.load_extension(f"cogs.{module_name}")
 
             except ExtensionError as err:
-                print(f"Cannot import cog '{module_name}' ({err}).")
+                logger.error(f"Failed to import cog '{module_name}' ({err}).")
 
     async def sync_cogs(self) -> None:
         """Syncs the slash commands to Discord."""

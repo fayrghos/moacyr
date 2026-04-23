@@ -2,6 +2,7 @@
 
 import asyncio
 import re
+from logging import getLogger
 from textwrap import dedent, shorten
 from typing import Any, Optional, Self
 
@@ -18,6 +19,9 @@ CONST_ID64 = 0x0110000100000000
 PRIV_TEXT = "[Privado]"
 COLOR_STEAM = Colour.from_rgb(40, 71, 101)
 MAX_DESC_LEN = 500
+
+
+logger = getLogger(__name__)
 
 
 class SteamAPI:
@@ -64,6 +68,9 @@ class SteamAPI:
                 + self.__kwargs_to_query(kwargs)
             )
         return response
+
+
+api: SteamAPI
 
 
 class SteamID:
@@ -319,7 +326,7 @@ class SteamGroup(Group):
             )
             await inter.followup.send(embed=embed)
 
-        except:
+        except Exception:
             embed = err_embed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
@@ -367,7 +374,7 @@ class SteamGroup(Group):
             )
             await inter.followup.send(embed=embed)
 
-        except:
+        except Exception:
             embed = err_embed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
@@ -384,7 +391,7 @@ async def setup(bot: CustomBot) -> None:
     global api
 
     if not STEAM_KEY:
-        print("The Steam key is blank. Skipping Steam commands...")
+        logger.warning("The Steam API key is blank, Steam commands will be skipped.")
         return
 
     api = SteamAPI(STEAM_KEY)

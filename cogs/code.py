@@ -1,6 +1,7 @@
 """Code running commands."""
 
 from dataclasses import dataclass
+from logging import getLogger
 from textwrap import dedent
 from typing import Any
 
@@ -16,6 +17,8 @@ import core.utils as utils
 from core.bot import CustomBot
 
 MAX_OUTPUT_WIDTH = 600
+
+logger = getLogger(__name__)
 
 
 def get_compiler_list() -> list[dict[str, Any]]:
@@ -33,7 +36,7 @@ def get_compiler_list() -> list[dict[str, Any]]:
         return functional_compilers
 
     except Exception as err:
-        print(f"Cannot connect to WandBox. ({err})")
+        logger.error(f"Failed to connect to Wandbox: {err}")
         return []
 
 

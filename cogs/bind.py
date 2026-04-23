@@ -286,7 +286,7 @@ def existing_bind_emb(name: str) -> Embed:
 
 def non_existing_bind_emb() -> Embed:
     return Embed(
-        description=f"Não existe nenhuma bind registrada com esse nome.",
+        description="Não existe nenhuma bind registrada com esse nome.",
         color=utils.COLOR_ERR,
     )
 
