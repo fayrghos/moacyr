@@ -1,24 +1,20 @@
 """A handle for config parsing."""
 
-from configparser import ConfigParser
-from pathlib import Path
+from typing import Optional
 
-CONFIG_PATH = Path("settings.ini")
+from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class BotConfig(ConfigParser):
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self.read(CONFIG_PATH)
+class Config(BaseSettings):
+    bot_token: str = Field(...)
+    db_path: str = Field(default="./data/")
 
-    def parse_section(self, name: str, def_values: dict) -> None:
-        """Adds a section into the .ini if it not exists."""
-        if not self.has_section(name):
-            self[name] = def_values
+    steam_key: Optional[str] = Field(default=None)
+    log_guild: Optional[int] = Field(default=None)
+    log_channel: Optional[int] = Field(default=None)
 
-        for key, value in def_values.items():
-            if not self.has_option(name, key):
-                self[name][key] = str(value)
+    model_config = SettingsConfigDict(env_file=".env")
 
-        with open(CONFIG_PATH, "w") as file:
-            self.write(file)
+
+config = Config()

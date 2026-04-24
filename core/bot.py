@@ -17,7 +17,7 @@ from discord.ext.commands import (
 )
 
 import core.utils as utils
-from core.envs import LOG_CHANNEL, LOG_GUILD
+from core.config import config
 
 ACTIV_TIME = 180
 
@@ -99,9 +99,9 @@ class CustomBot(Bot):
         if (
             self.application
             and self.application.owner.id == inter.user.id
-            and LOG_CHANNEL
+            and config.log_channel
         ):
-            log_channel = await self.fetch_channel(int(LOG_CHANNEL))
+            log_channel = await self.fetch_channel(config.log_channel)
             if isinstance(log_channel, discord.TextChannel):
                 embed = utils.err_embed(error, title=error.__class__.__name__)
                 await log_channel.send(self.application.owner.mention, embed=embed)
@@ -122,8 +122,8 @@ class CustomBot(Bot):
     async def sync_cogs(self) -> None:
         """Syncs the slash commands to Discord."""
         await self.tree.sync()
-        if LOG_GUILD:
-            await self.tree.sync(guild=discord.Object(int(LOG_GUILD)))
+        if config.log_guild:
+            await self.tree.sync(guild=discord.Object(config.log_guild))
 
     async def cycle_activities(self) -> NoReturn:
         """Toggles between activities periodically."""

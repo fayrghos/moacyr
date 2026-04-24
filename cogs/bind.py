@@ -18,18 +18,7 @@ from discord.ui import Modal, TextInput
 
 import core.utils as utils
 from core.bot import CustomBot
-from core.config import BotConfig
-from core.db import call_database
-
-cfg = BotConfig()
-cfg.parse_section(
-    "Binds",
-    {
-        "enabled": "yes",
-    },
-)
-
-BIND_ENABLED = cfg.getboolean("Binds", "enabled")
+from core.database import call_database
 
 MIN_NAME_LEN = 2
 MAX_NAME_LEN = 25
@@ -55,18 +44,17 @@ class BindManager:
     """Represents the Bind Manager system."""
 
     def __init__(self) -> None:
-        if BIND_ENABLED:
-            with call_database() as (conn, cursor):
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS binds (
-                        "name" TEXT,
-                        "text" TEXT,
-                        "author" INTEGER,
-                        "guild" INTEGER,
-                        "time" INTEGER,
-                        UNIQUE("guild","name")
-                    )
-                """)
+        with call_database() as (conn, cursor):
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS binds (
+                    "name" TEXT,
+                    "text" TEXT,
+                    "author" INTEGER,
+                    "guild" INTEGER,
+                    "time" INTEGER,
+                    UNIQUE("guild","name")
+                )
+            """)
         self.complete_cache: dict[tuple[int, int], list[Bind]] = {}
 
     def get_bind(self, name: str, guild: int) -> Bind | None:
@@ -307,7 +295,7 @@ class BindGroup(Group):
         self.bot.add_listener(self.server_leave_deleter, "on_guild_remove")
 
     async def interaction_check(self, inter: Interaction) -> bool:
-        return BIND_ENABLED and inter.guild is not None
+        return inter.guild is not None
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:
         if isinstance(error, CheckFailure):

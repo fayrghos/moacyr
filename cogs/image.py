@@ -15,19 +15,6 @@ from PIL import Image
 
 import core.utils as utils
 from core.bot import CustomBot
-from core.config import BotConfig
-
-cfg = BotConfig()
-cfg.parse_section(
-    "Images",
-    {
-        "enabled": "yes",
-        "maxscale": 3.0,
-        "minscale": 0.2,
-    },
-)
-
-IMGS_ENABLED = cfg.getboolean("Images", "enabled")
 
 MAX_FILESIZE = 1e7
 
@@ -233,9 +220,6 @@ class ImgGroup(Group):
             name="image", description="Comandos relacionados a interações com imagens."
         )
         self.bot = bot
-
-    async def interaction_check(self, inter: Interaction) -> bool:
-        return IMGS_ENABLED
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:
         if isinstance(error, CheckFailure):

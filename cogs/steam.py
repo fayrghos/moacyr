@@ -12,7 +12,7 @@ from discord.app_commands import Group, command, rename
 from httpx import Response
 
 from core.bot import CustomBot
-from core.envs import STEAM_KEY
+from core.config import config
 from core.utils import Timestamp, err_embed, to_timestamp
 
 CONST_ID64 = 0x0110000100000000
@@ -39,6 +39,7 @@ class SteamAPI:
             timeout=10,
         )
         if response.status_code == 200 and response.json()["apilist"]["interfaces"]:
+            logger.info("The Steam connection is OK.")
             return
 
         raise InvalidSteamKey("The provided Steam key could not be validated.")
@@ -390,9 +391,9 @@ class InvalidSteamKey(Exception):
 async def setup(bot: CustomBot) -> None:
     global api
 
-    if not STEAM_KEY:
+    if not config.steam_key:
         logger.warning("The Steam API key is blank, Steam commands will be skipped.")
         return
 
-    api = SteamAPI(STEAM_KEY)
+    api = SteamAPI(config.steam_key)
     bot.tree.add_command(SteamGroup(bot))

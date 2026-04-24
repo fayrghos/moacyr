@@ -33,6 +33,7 @@ def get_compiler_list() -> list[dict[str, Any]]:
             for compiler in response
             if "head" not in compiler.get("name", "").lower()
         ]
+        logger.info("The Wandbox connection is OK.")
         return functional_compilers
 
     except Exception as err:
