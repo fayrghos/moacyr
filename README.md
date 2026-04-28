@@ -28,9 +28,10 @@ The project also supports .env files for environment configuration. Set up the f
 system in order to proceed, note that some are optional.
 
 | Variable    | Description                              |
-|-------------|------------------------------------------|
+| ----------- | ---------------------------------------- |
 | BOT_TOKEN   | The Discord bot auth token. _(Required)_ |
 | STEAM_KEY   | A Steam Web API key.                     |
+| DB_PATH     | The path for the SQLite database.        |
 | LOG_GUILD   | The log guild ID.                        |
 | LOG_CHANNEL | The log channel ID.                      |
 
@@ -48,7 +49,7 @@ uv run main.py
 Alternatively, a preconfigured Dockerfile is available for a quicker setup. It should be compatible with both Docker and
 Podman.
 
-``` bash
+```bash
 # Building the image
 podman build --tag moacyr:3.14 .
 
