@@ -1,27 +1,22 @@
 """A handler for the database."""
 
-from contextlib import contextmanager
-from os import makedirs, path
+from logging import getLogger
+from os import makedirs
+from os.path import exists
 from pathlib import Path
-from sqlite3 import Connection, Cursor, connect
-from typing import Generator
+
+from sqlmodel import SQLModel, create_engine
 
 from core.config import config
+from core.models import bind as bind
 
-DB_DIR = Path(config.db_path)
-if not path.exists(DB_DIR):
-    makedirs(DB_DIR)
+logger = getLogger(__name__)
 
+DB_PATH = Path(config.db_path)
+if not exists(DB_PATH):
+    logger.info(f"Creating a '{DB_PATH}' directory.")
+    makedirs(DB_PATH)
 
-@contextmanager
-def call_database() -> Generator[tuple[Connection, Cursor], None, None]:
-    """Creates a temporary connection for the database."""
-    conn = connect(path.join(DB_DIR, "main.db"))
-    cursor = conn.cursor()
+dbengine = create_engine(f"sqlite:///{DB_PATH}/main.db")
 
-    try:
-        yield conn, cursor
-
-    finally:
-        cursor.close()
-        conn.close()
+SQLModel.metadata.create_all(dbengine)

@@ -2,7 +2,7 @@
 
 import re
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Optional, Union
 
 from discord import ButtonStyle, Colour, Embed, Interaction, Permissions
 from discord.ext.commands import Context
@@ -58,7 +58,7 @@ async def remove_mentions(message: str, via: Union[Context, Interaction]) -> str
     return message
 
 
-def to_timestamp(time: Any, stamp: Timestamp = Timestamp.Default) -> str:
+def to_timestamp(time: int, stamp: Timestamp = Timestamp.Default) -> str:
     """Tries to format the param to a Discord timestamp."""
     return f"<t:{time}{stamp.value}>" if time else ""
 

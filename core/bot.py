@@ -116,8 +116,8 @@ class CustomBot(Bot):
             try:
                 await self.load_extension(f"cogs.{module_name}")
 
-            except ExtensionError as err:
-                logger.error(f"Failed to import cog '{module_name}' ({err}).")
+            except ExtensionError:
+                logger.exception(f"Failed to import cog '{module_name}'.")
 
     async def sync_cogs(self) -> None:
         """Syncs the slash commands to Discord."""
