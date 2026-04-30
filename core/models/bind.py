@@ -1,7 +1,7 @@
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Optional
 
-from sqlmodel import Field, SQLModel
+from sqlmodel import Field, Index, SQLModel
 
 from core.utils import Timestamp, to_timestamp
 
@@ -10,13 +10,18 @@ class Bind(SQLModel, table=True):
     __tablename__ = "binds"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    title: str = Field(index=True)
+    title: str
     text: str
-    author: int = Field(index=True)
-    guild: int = Field(index=True)
+    author: int
+    guild: int
 
-    created: datetime = Field(default_factory=datetime.now)
+    created: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated: Optional[datetime] = Field(default=None)
+
+    __table_args__ = (
+        Index("ix_binds_pairs", "guild", "title", unique=True),
+        Index("ix_binds_completes", "guild", "author", "title"),
+    )
 
     @property
     def f_created(self) -> str:

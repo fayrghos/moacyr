@@ -1,7 +1,8 @@
-from discord import Embed, Interaction, TextStyle
-from discord.app_commands import Group, allowed_contexts, command
+from discord import AllowedMentions, Embed, Interaction, TextStyle
+from discord.app_commands import Group, allowed_contexts, autocomplete, command
 from discord.ui import Label, Modal, TextInput
 
+from cogs.bind.complete import BindCompleter
 from cogs.bind.manager import BindManager
 from cogs.bind.validator import BindError, BindValidator
 from core.bot import CustomBot
@@ -10,6 +11,7 @@ from core.utils import COLOR_DEF
 
 manager = BindManager()
 validator = BindValidator(manager)
+completer = BindCompleter(manager)
 
 TEXT_MAX = 1000
 
@@ -102,6 +104,7 @@ class BindCog(Group):
         self.bot = bot
 
     @command(name="print")
+    @autocomplete(title=completer.server_complete)
     async def b_print(self, inter: Interaction, title: str) -> None:
         """Imprime o texto de uma bind.
 
@@ -117,7 +120,9 @@ class BindCog(Group):
             await inter.response.send_message(embed=err.embed())
             return
 
-        await inter.response.send_message(bind.text)
+        await inter.response.send_message(
+            bind.text, allowed_mentions=AllowedMentions.none()
+        )
 
     @command(name="add")
     async def b_add(self, inter: Interaction, title: str) -> None:
@@ -139,6 +144,7 @@ class BindCog(Group):
         await inter.response.send_modal(BindAddModal(title))
 
     @command(name="edit")
+    @autocomplete(title=completer.author_complete)
     async def b_edit(self, inter: Interaction, title: str) -> None:
         """Edita uma de suas binds.
 
@@ -158,6 +164,7 @@ class BindCog(Group):
         await inter.response.send_modal(BindEditModal(bind))
 
     @command(name="delete")
+    @autocomplete(title=completer.author_complete)
     async def b_delete(self, inter: Interaction, title: str) -> None:
         """Delete uma de suas binds.
 
