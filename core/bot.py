@@ -1,140 +1,87 @@
-"""A subclass for customizing the bot."""
+"""The main bot implementation."""
 
-import asyncio
-import random
+from asyncio import sleep
 from logging import getLogger
-from typing import NoReturn
+from os import listdir
+from random import shuffle
 
-import discord
-from discord import Embed, Interaction, InteractionType
-from discord.app_commands import AppCommandError, CommandNotFound
-from discord.ext.commands import (
-    Bot,
-    CheckFailure,
-    CommandError,
-    Context,
-    ExtensionError,
-)
+from discord import Embed, Game, Interaction
+from discord.app_commands import CheckFailure
+from discord.ext.commands import Bot, Context, ExtensionAlreadyLoaded, ExtensionNotFound
 
-import core.utils as utils
-from core.config import config
-
-ACTIV_TIME = 180
+from core.utils import COLOR_ERR_CRIT
 
 logger = getLogger(__name__)
 
-module_list: tuple[str, ...] = (
-    "general",
-    "dev",
-    "bind",
-    "steam",
-    "image",
-    "code",
-)
-
-status_list: list[str] = [
+ACTIVS: tuple[str, ...] = (
+    "Italy",
+    "Office",
+    "Ancient",
+    "Cache",
+    "Dust II",
+    "Inferno",
+    "Mirage",
+    "Nuke",
+    "Overpass",
     "Train",
     "Vertigo",
-    "Ancient",
-    "Overpass",
-    "Mirage",
-    "Inferno",
-    "Nuke",
-    "Anubis",
-    "Dust II",
-    "Office",
-    "Italy",
-    "Pool Day",
-    "Bind",
-    "Haven",
-    "Split",
-    "Ascent",
-    "Icebox",
-    "Breeze",
-    "Fracture",
-    "Pearl",
-    "Lotus",
-    "Sunset",
-    "Abyss",
-    "Corrode",
-]
+)
+
+ACTIVS_TIME = 300
 
 
-class CustomBot(Bot):
+class Moacyr(Bot):
+    """The right coolness in the wrong place."""
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.activity_index: int = 0
-        self.activity_cycletime: int = ACTIV_TIME
-        self.activities: list[str] = status_list
-
-        self.tree.error(self.on_slash_error)
+        self.activs = [Game(name=activ) for activ in ACTIVS]
 
     async def on_ready(self) -> None:
-        if self.activities:
-            self.loop.create_task(self.cycle_activities())
+        await self.load_cogs()
+        await self.cycle_ativs()
+        logger.info("Wake up and smell the ashes.")
 
-        await self.init_cogs()
-        await self.sync_cogs()
+    async def load_cogs(self) -> None:
+        """Load and sync all available cogs."""
+        cogs: list[str] = [
+            item.replace(".py", "")
+            for item in listdir("cogs")
+            if not item.startswith("_")
+        ]
 
-        logger.info("Let's roll.")
+        for cog in cogs:
+            try:
+                await self.load_extension(f"cogs.{cog}")
+            except ExtensionAlreadyLoaded:
+                logger.error(f"Multiple cogs named '{cog}' found!")
+            except ExtensionNotFound:
+                logger.error(f"No cogs named '{cog}' were found!")
 
-    async def on_slash_error(self, inter: Interaction, error: AppCommandError) -> None:
-        if isinstance(error, CheckFailure):
+        await self.tree.sync()
+
+    async def cycle_ativs(self) -> None:
+        """Rotate the bot activities periodically."""
+        while True:
+            shuffle(self.activs)
+            for activ in self.activs:
+                await self.change_presence(activity=activ)
+                await sleep(ACTIVS_TIME)
+
+    async def on_command_error(self, ctx: Context, err: Exception) -> None:
+        """Prefix commands."""
+        pass
+
+    async def on_slash_command_error(self, inter: Interaction, err: Exception) -> None:
+        """Slash commands."""
+        if isinstance(err, CheckFailure):
             return
 
-        if isinstance(error, CommandNotFound):
-            return
-
-        if (
-            not inter.response.is_done()
-            and inter.type == InteractionType.application_command
-        ):
-            await inter.response.send_message(
-                embed=Embed(
-                    colour=utils.COLOR_ERR_CRIT,
+        logger.exception("Unknown Exception.", exc_info=err)
+        if not inter.response.is_done():
+            await inter.response.send(
+                Embed=Embed(
+                    colour=COLOR_ERR_CRIT,
                     description="Ocorreu um erro não catalogado.",
                 )
             )
-
-        if (
-            self.application
-            and self.application.owner.id == inter.user.id
-            and config.log_channel
-        ):
-            log_channel = await self.fetch_channel(config.log_channel)
-            if isinstance(log_channel, discord.TextChannel):
-                embed = utils.err_embed(error, title=error.__class__.__name__)
-                await log_channel.send(self.application.owner.mention, embed=embed)
-
-    # Just silencing legacy prefixed commands
-    async def on_command_error(self, context: Context, error: CommandError) -> None:
-        pass
-
-    async def init_cogs(self) -> None:
-        """Initializes all bot commands in the given modules."""
-        for module_name in module_list:
-            try:
-                await self.load_extension(f"cogs.{module_name}")
-
-            except ExtensionError:
-                logger.exception(f"Failed to import cog '{module_name}'.")
-
-    async def sync_cogs(self) -> None:
-        """Syncs the slash commands to Discord."""
-        await self.tree.sync()
-        if config.log_guild:
-            await self.tree.sync(guild=discord.Object(config.log_guild))
-
-    async def cycle_activities(self) -> NoReturn:
-        """Toggles between activities periodically."""
-        random.shuffle(self.activities)
-        while True:
-            activity = discord.Game(name=self.activities[self.activity_index])
-
-            await self.change_presence(activity=activity)
-            self.activity_index += 1
-            if self.activity_index % len(self.activities) == 0:
-                random.shuffle(self.activities)
-                self.activity_index = 0
-
-            await asyncio.sleep(self.activity_cycletime)

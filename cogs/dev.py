@@ -8,11 +8,11 @@ import discord
 from discord.ext.commands import Cog, Context, command
 
 import core.utils as utils
-from core.bot import CustomBot
+from core.bot import Moacyr
 
 
 class DevCog(Cog):
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         self.bot = bot
 
     def cog_check(self, ctx: Context) -> bool:
@@ -102,5 +102,5 @@ class DevCog(Cog):
         await ctx.send(embed=embed)
 
 
-async def setup(bot: CustomBot) -> None:
+async def setup(bot: Moacyr) -> None:
     await bot.add_cog(DevCog(bot))

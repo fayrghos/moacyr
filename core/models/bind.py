@@ -1,3 +1,5 @@
+"""SQL models for bind commands;"""
+
 from datetime import UTC, datetime
 from typing import Optional
 

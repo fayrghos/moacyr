@@ -14,7 +14,7 @@ from httpx import UnsupportedProtocol
 from PIL import Image
 
 import core.utils as utils
-from core.bot import CustomBot
+from core.bot import Moacyr
 
 MAX_FILESIZE = 1e7
 
@@ -215,7 +215,7 @@ def handle_shared_errors(error: Exception) -> Embed:
 
 
 class ImgGroup(Group):
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         super().__init__(
             name="image", description="Comandos relacionados a interações com imagens."
         )
@@ -336,5 +336,5 @@ class NotAllowedMime(Exception):
         self.mime = mime
 
 
-async def setup(bot: CustomBot) -> None:
+async def setup(bot: Moacyr) -> None:
     bot.tree.add_command(ImgGroup(bot))

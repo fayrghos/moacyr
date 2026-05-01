@@ -11,7 +11,7 @@ from discord import Colour, Embed, Interaction
 from discord.app_commands import Group, command, rename
 from httpx import Response
 
-from core.bot import CustomBot
+from core.bot import Moacyr
 from core.config import config
 from core.utils import Timestamp, err_embed, to_timestamp
 
@@ -263,7 +263,7 @@ class SteamWorkItem:
 
 
 class SteamGroup(Group):
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         super().__init__(name="steam", description="Comandos relacionados ao Steam.")
         self.bot = bot
 
@@ -388,7 +388,7 @@ class InvalidSteamKey(Exception):
     pass
 
 
-async def setup(bot: CustomBot) -> None:
+async def setup(bot: Moacyr) -> None:
     global api
 
     if not config.steam_key:

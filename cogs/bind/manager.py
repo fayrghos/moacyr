@@ -1,3 +1,5 @@
+"""Database access layer for binds."""
+
 from datetime import UTC, datetime
 from typing import Optional
 
@@ -9,7 +11,7 @@ from core.models.bind import Bind
 
 class BindManager:
     def single(self, title: str, guild: int) -> Optional[Bind]:
-        """Fetches a single bind."""
+        """Fetch a single bind by title and guild."""
         with Session(dbengine) as session:
             results = session.exec(
                 select(Bind)
@@ -22,7 +24,7 @@ class BindManager:
             return results.first()
 
     def many_server(self, guild: int, cur: str, amount: int) -> tuple[Bind, ...]:
-        """Fetches many server binds."""
+        """Fetch server binds matching the current input."""
         with Session(dbengine) as session:
             results = session.exec(
                 select(Bind)
@@ -38,7 +40,7 @@ class BindManager:
     def many_author(
         self, author: int, guild: int, cur: str, amount: int
     ) -> tuple[Bind, ...]:
-        """Fetches many author binds."""
+        """Fetch author binds matching the current input."""
         with Session(dbengine) as session:
             results = session.exec(
                 select(Bind)
@@ -53,26 +55,26 @@ class BindManager:
             return tuple(results.all())
 
     def add(self, bind: Bind) -> None:
-        """Inserts a single bind."""
+        """Insert a new bind record."""
         with Session(dbengine) as session:
             session.add(bind)
             session.commit()
 
     def edit(self, bind: Bind) -> None:
-        """Updates a bind."""
+        """Update an existing bind record."""
         with Session(dbengine) as session:
             bind.updated = datetime.now(UTC)
             session.merge(bind)
             session.commit()
 
     def delete(self, bind: Bind) -> None:
-        """Deletes a bind."""
+        """Delete a single bind record."""
         with Session(dbengine) as session:
             session.delete(bind)
             session.commit()
 
     def nuke(self, guild: int) -> None:
-        """Deletes all binds from a especific guild."""
+        """Delete all binds from a specific guild."""
         with Session(dbengine) as session:
             session.exec(delete(Bind).where(col(Bind.guild) == guild))
             session.commit()

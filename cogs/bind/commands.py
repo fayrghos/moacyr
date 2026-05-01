@@ -1,3 +1,5 @@
+"""The Discord interface to Bind commands."""
+
 from discord import AllowedMentions, Embed, Interaction, TextStyle
 from discord.app_commands import Group, allowed_contexts, autocomplete, command
 from discord.ui import Label, Modal, TextInput
@@ -5,7 +7,7 @@ from discord.ui import Label, Modal, TextInput
 from cogs.bind.complete import BindCompleter
 from cogs.bind.manager import BindManager
 from cogs.bind.validator import BindError, BindValidator
-from core.bot import CustomBot
+from core.bot import Moacyr
 from core.models.bind import Bind
 from core.utils import COLOR_DEF
 
@@ -99,7 +101,7 @@ class BindEditModal(Modal):
 class BindGroup(Group):
     """Bind-related commands."""
 
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         super().__init__(name="bind", description="Comandos relacionados a binds.")
         self.bot = bot
 

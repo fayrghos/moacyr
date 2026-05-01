@@ -1,3 +1,5 @@
+"""Autocomplete handlers for bind commands."""
+
 from discord import Interaction
 from discord.app_commands import Choice
 
@@ -13,7 +15,7 @@ class BindCompleter:
         self.manager = manager
 
     async def author_complete(self, inter: Interaction, cur: str) -> list[Choice[str]]:
-        """Displays only binds created by the user."""
+        """Return bind options created by the current user."""
         assert inter.guild
 
         results = self.manager.many_author(
@@ -26,7 +28,7 @@ class BindCompleter:
         return out
 
     async def server_complete(self, inter: Interaction, cur: str) -> list[Choice[str]]:
-        """Displays all binds inthe server."""
+        """Return bind options available in the current server."""
         assert inter.guild
 
         results = self.manager.many_server(inter.guild.id, cur, MAX_OPTIONS)

@@ -27,13 +27,11 @@ an [uncomplicated tutorial](https://discordpy.readthedocs.io/en/stable/discord.h
 The project also supports .env files for environment configuration. Set up the following environment variables in your
 system in order to proceed, note that some are optional.
 
-| Variable    | Description                              |
-| ----------- | ---------------------------------------- |
-| BOT_TOKEN   | The Discord bot auth token. _(Required)_ |
-| STEAM_KEY   | A Steam Web API key.                     |
-| DB_PATH     | The path for the SQLite database.        |
-| LOG_GUILD   | The log guild ID.                        |
-| LOG_CHANNEL | The log channel ID.                      |
+| Variable  | Description                              |
+| --------- | ---------------------------------------- |
+| BOT_TOKEN | The Discord bot auth token. _(Required)_ |
+| STEAM_KEY | A Steam Web API key.                     |
+| DB_PATH   | The path for the SQLite database.        |
 
 ### Native Installation
 

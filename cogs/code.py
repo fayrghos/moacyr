@@ -14,7 +14,7 @@ from discord.ui import Button, Label, Modal, TextInput, View, button
 from httpx import ReadTimeout
 
 import core.utils as utils
-from core.bot import CustomBot
+from core.bot import Moacyr
 
 MAX_OUTPUT_WIDTH = 600
 
@@ -212,7 +212,7 @@ class DisplayCodeView(View):
 
 
 class RunCog(Cog):
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         self.bot = bot
 
     @command(
@@ -242,5 +242,5 @@ class RunCog(Cog):
         )
 
 
-async def setup(bot: CustomBot) -> None:
+async def setup(bot: Moacyr) -> None:
     await bot.add_cog(RunCog(bot))

@@ -9,7 +9,7 @@ from discord.app_commands import command
 from discord.ext.commands import Cog
 
 import core.utils as utils
-from core.bot import CustomBot
+from core.bot import Moacyr
 
 DICE_LIMIT = 50_000
 
@@ -25,7 +25,7 @@ def clean_entries(names: list[str]) -> list[str]:
 
 
 class GeneralCog(Cog):
-    def __init__(self, bot: CustomBot) -> None:
+    def __init__(self, bot: Moacyr) -> None:
         self.bot = bot
 
     @command()
@@ -145,5 +145,5 @@ class GeneralCog(Cog):
         await inter.followup.send(embed=embed)
 
 
-async def setup(bot: CustomBot) -> None:
+async def setup(bot: Moacyr) -> None:
     await bot.add_cog(GeneralCog(bot))
