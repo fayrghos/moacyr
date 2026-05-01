@@ -1,7 +1,7 @@
 from core.bot import CustomBot
 
-from .commands import BindCog
+from .commands import BindGroup
 
 
 async def setup(bot: CustomBot) -> None:
-    bot.tree.add_command(BindCog(bot))
+    bot.tree.add_command(BindGroup(bot))

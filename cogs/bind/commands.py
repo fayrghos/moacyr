@@ -96,7 +96,7 @@ class BindEditModal(Modal):
 
 
 @allowed_contexts(guilds=True, dms=False)
-class BindCog(Group):
+class BindGroup(Group):
     """Bind-related commands."""
 
     def __init__(self, bot: CustomBot) -> None:
