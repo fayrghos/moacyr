@@ -5,7 +5,7 @@ from typing import Optional
 
 from sqlmodel import Field, Index, SQLModel
 
-from core.utils import Timestamp, to_timestamp
+from core.utils import Timestamp, stampify
 
 
 class Bind(SQLModel, table=True):
@@ -27,10 +27,10 @@ class Bind(SQLModel, table=True):
 
     @property
     def f_created(self) -> str:
-        return to_timestamp(int(self.created.timestamp()), Timestamp.Relative)
+        return stampify(int(self.created.timestamp()), Timestamp.Relative)
 
     @property
     def f_updated(self) -> str:
         if not self.updated:
             return "Nunca"
-        return to_timestamp(int(self.updated.timestamp()), Timestamp.Relative)
+        return stampify(int(self.updated.timestamp()), Timestamp.Relative)

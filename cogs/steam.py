@@ -13,7 +13,7 @@ from httpx import Response
 
 from core.bot import Moacyr
 from core.config import config
-from core.utils import Timestamp, err_embed, to_timestamp
+from core.utils import Errbed, Timestamp, stampify
 
 CONST_ID64 = 0x0110000100000000
 PRIV_TEXT = "[Privado]"
@@ -282,8 +282,8 @@ class SteamGroup(Group):
 
             desc: str = dedent(f"""
                 Nível: **{user.level if user.level is not None else PRIV_TEXT}**
-                Criado: **{to_timestamp(user.join, Timestamp.LongDate) if user.join else PRIV_TEXT}**
-                Visto: **{to_timestamp(user.seen, Timestamp.LongDate) if user.seen else PRIV_TEXT}**
+                Criado: **{stampify(user.join, Timestamp.LongDate) if user.join else PRIV_TEXT}**
+                Visto: **{stampify(user.seen, Timestamp.LongDate) if user.seen else PRIV_TEXT}**
                 Amigos: **{user.friend_amount or PRIV_TEXT}**
                 País: **{user.country or PRIV_TEXT}**
             """)
@@ -321,14 +321,14 @@ class SteamGroup(Group):
             await inter.followup.send(embed=embed)
 
         except IdNotFound:
-            embed = err_embed(
+            embed = Errbed(
                 "Nenhum jogador foi encontrado.\n"
                 + "Esse comando aceita URLs de perfil e qualquer formato de SteamID."
             )
             await inter.followup.send(embed=embed)
 
         except Exception:
-            embed = err_embed("Algo deu errado.")
+            embed = Errbed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
     @command()
@@ -346,8 +346,8 @@ class SteamGroup(Group):
             data_field: str = dedent(f"""
                 ID: **{item.id}**
                 Tamanho: **{round(item.file_size / (2**20), 2)} MiB**
-                Postado: **{to_timestamp(item.create_date, Timestamp.ShortDate)}**
-                Atualizado: **{to_timestamp(item.update_date, Timestamp.ShortDate)}**
+                Postado: **{stampify(item.create_date, Timestamp.ShortDate)}**
+                Atualizado: **{stampify(item.update_date, Timestamp.ShortDate)}**
             """)
 
             stats_field: str = dedent(f"""
@@ -369,14 +369,14 @@ class SteamGroup(Group):
             await inter.followup.send(embed=embed)
 
         except IdNotFound:
-            embed = err_embed(
+            embed = Errbed(
                 "Nenhum item na oficina foi encontrado.\n"
                 + "Esse comando aceita IDs de item ou sua respectiva URL."
             )
             await inter.followup.send(embed=embed)
 
         except Exception:
-            embed = err_embed("Algo deu errado.")
+            embed = Errbed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
 

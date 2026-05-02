@@ -2,20 +2,17 @@
 
 from typing import Union
 
-from discord import Embed, Member, User
+from discord import Member, User
 
 from cogs.bind.manager import BindManager
 from core.models.bind import Bind
-from core.utils import err_embed
+from core.utils import MoacyrException
 
 TITLE_MAX = 18
 
 
-class BindError(Exception):
-    """A generic bind-related error."""
-
-    def embed(self) -> Embed:
-        return err_embed(self)
+class BindError(MoacyrException):
+    pass
 
 
 class BindValidator:

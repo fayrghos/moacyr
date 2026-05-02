@@ -9,7 +9,7 @@ from discord import Embed, Game, Interaction
 from discord.app_commands import CheckFailure
 from discord.ext.commands import Bot, Context, ExtensionAlreadyLoaded, ExtensionNotFound
 
-from core.utils import COLOR_ERR_CRIT
+from core.utils import COLOR_CRIT
 
 logger = getLogger(__name__)
 
@@ -81,7 +81,7 @@ class Moacyr(Bot):
         if not inter.response.is_done():
             await inter.response.send(
                 Embed=Embed(
-                    colour=COLOR_ERR_CRIT,
+                    colour=COLOR_CRIT,
                     description="Ocorreu um erro não catalogado.",
                 )
             )

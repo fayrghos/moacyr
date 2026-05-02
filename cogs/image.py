@@ -97,7 +97,7 @@ async def call_anime_api(image: ImageHandler) -> Embed:
         data: dict[str, Any] = response.json()["result"][0]
 
         if data["anilist"]["isAdult"]:
-            return utils.err_embed(
+            return utils.Errbed(
                 "O melhor palpite não pode ser exibido pois encontrou conteúdo adulto."
             )
 
@@ -131,33 +131,31 @@ async def call_anime_api(image: ImageHandler) -> Embed:
     else:
         match response.status_code:
             case 400:
-                return utils.err_embed(
+                return utils.Errbed(
                     "A API não foi capaz de decodificar a imagem enviada."
                 )
 
             case 403 | 404:
-                return utils.err_embed(
+                return utils.Errbed(
                     "A API não conseguiu extrair imagens do URL enviado."
                 )
 
             case 405:
-                return utils.err_embed(
+                return utils.Errbed(
                     "A API relatou que o método HTTP usado foi incorreto."
                 )
 
             case 500:
-                return utils.err_embed("O servidor da API relatou um erro interno.")
+                return utils.Errbed("O servidor da API relatou um erro interno.")
 
             case 503:
-                return utils.err_embed("O banco de dados da API não está respondendo.")
+                return utils.Errbed("O banco de dados da API não está respondendo.")
 
             case 504:
-                return utils.err_embed("O servidor da API está sobrecarregado.")
+                return utils.Errbed("O servidor da API está sobrecarregado.")
 
             case _:
-                return utils.err_embed(
-                    "Ocorreu um erro HTTP com status não catalogado."
-                )
+                return utils.Errbed("Ocorreu um erro HTTP com status não catalogado.")
 
 
 def save_gif(
@@ -188,21 +186,21 @@ def handle_shared_errors(error: Exception) -> Embed:
     """Handles common errors that can occur in image commands."""
     match error:
         case FileSizeExceeded():
-            return utils.err_embed(
+            return utils.Errbed(
                 "O arquivo enviado é pesado demais para ser processado."
             )
 
         case ImageTooBig():
-            return utils.err_embed("A imagem resultante é grande demais.")
+            return utils.Errbed("A imagem resultante é grande demais.")
 
         case ImageTooSmall():
-            return utils.err_embed("A imagem resultante é pequena demais.")
+            return utils.Errbed("A imagem resultante é pequena demais.")
 
         case UnsupportedProtocol():
-            return utils.err_embed("O URL enviado não é válido.")
+            return utils.Errbed("O URL enviado não é válido.")
 
         case NotAllowedMime() as err:
-            return utils.err_embed(
+            return utils.Errbed(
                 textwrap.dedent(f"""\
                 O seu arquivo é do tipo inválido \"**{normalize_mime(err.mime)}**\".
 
@@ -211,7 +209,7 @@ def handle_shared_errors(error: Exception) -> Embed:
             """)
             )
         case _:
-            return utils.err_embed("Algo deu errado.")
+            return utils.Errbed("Algo deu errado.")
 
 
 class ImgGroup(Group):
@@ -223,9 +221,7 @@ class ImgGroup(Group):
 
     async def on_error(self, inter: Interaction, error: Exception) -> None:
         if isinstance(error, CheckFailure):
-            embed = utils.err_embed(
-                "Os comandos de imagem estão desativados no momento"
-            )
+            embed = utils.Errbed("Os comandos de imagem estão desativados no momento")
             await inter.response.send_message(embed=embed)
 
     @command(
@@ -248,14 +244,12 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.err_embed(
-                "Você precisa fornecer pelo menos um URL ou Arquivo."
-            )
+            embed = utils.Errbed("Você precisa fornecer pelo menos um URL ou Arquivo.")
             await inter.followup.send(embed=embed)
             return
 
         if scale > MAX_SCALE or scale < MIN_SCALE:
-            embed = utils.err_embed(
+            embed = utils.Errbed(
                 f"A escala só pode ir de {MIN_SCALE}x até {MAX_SCALE}x."
             )
             await inter.followup.send(embed=embed)
@@ -271,7 +265,7 @@ class ImgGroup(Group):
             assert image
 
             if image.mime == "image/gif":
-                embed = utils.err_embed("Bem... isso já parece ser um GIF.")
+                embed = utils.Errbed("Bem... isso já parece ser um GIF.")
                 await inter.followup.send(embed=embed)
                 return
 
@@ -300,9 +294,7 @@ class ImgGroup(Group):
         await inter.response.defer()
 
         if not file and not url:
-            embed = utils.err_embed(
-                "Você precisa fornecer pelo menos um URL ou Arquivo."
-            )
+            embed = utils.Errbed("Você precisa fornecer pelo menos um URL ou Arquivo.")
             await inter.followup.send(embed=embed)
             return
 

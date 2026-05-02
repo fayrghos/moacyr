@@ -4,7 +4,7 @@ from random import randint, sample, shuffle
 from textwrap import dedent
 from time import time
 
-from discord import Embed, Interaction
+from discord import AllowedMentions, Embed, Interaction
 from discord.app_commands import command
 from discord.ext.commands import Cog
 
@@ -36,8 +36,7 @@ class GeneralCog(Cog):
             message: A mensagem a ser dita. Menções são convertidas em texto.
         """
         await inter.response.defer()
-        message = await utils.remove_mentions(message, inter)
-        await inter.followup.send(message)
+        await inter.followup.send(message, allowed_mentions=AllowedMentions.none())
 
     @command()
     async def raffle(self, inter: Interaction, entries: str, winners: int) -> None:
@@ -50,19 +49,19 @@ class GeneralCog(Cog):
         await inter.response.defer()
 
         if winners < 1:
-            embed = utils.err_embed("É necessário pelo menos 1 vencedor.")
+            embed = utils.Errbed("É necessário pelo menos 1 vencedor.")
             await inter.followup.send(embed=embed)
             return
 
         entry_list: list[str] = clean_entries(entries.split(","))
         if not entry_list:
-            embed = utils.err_embed("Nenhum participante foi encontrado.")
+            embed = utils.Errbed("Nenhum participante foi encontrado.")
             await inter.followup.send(embed=embed)
             return
 
         entry_count: int = len(entry_list)
         if winners > entry_count:
-            embed = utils.err_embed(
+            embed = utils.Errbed(
                 "A quantidade de vencedores é maior que a de entradas."
             )
             await inter.followup.send(embed=embed)
@@ -97,17 +96,17 @@ class GeneralCog(Cog):
         await inter.response.defer()
 
         if amount < 1:
-            embed = utils.err_embed("É necessário lançar pelo menos 1 dado.")
+            embed = utils.Errbed("É necessário lançar pelo menos 1 dado.")
             await inter.followup.send(embed=embed)
             return
 
         if sides < 2:
-            embed = utils.err_embed("Cada dado deve conter pelo menos 2 lados.")
+            embed = utils.Errbed("Cada dado deve conter pelo menos 2 lados.")
             await inter.followup.send(embed=embed)
             return
 
         if sides + amount + modifier > DICE_LIMIT:
-            embed = utils.err_embed("Valores muito grandes foram inseridos.")
+            embed = utils.Errbed("Valores muito grandes foram inseridos.")
             await inter.followup.send(embed=embed)
             return
 

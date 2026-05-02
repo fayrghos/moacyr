@@ -1,6 +1,6 @@
 """The Discord interface to Bind commands."""
 
-from discord import AllowedMentions, Embed, Interaction, TextStyle
+from discord import AllowedMentions, Interaction, TextStyle
 from discord.app_commands import Group, allowed_contexts, autocomplete, command
 from discord.ui import Label, Modal, TextInput
 
@@ -9,7 +9,7 @@ from cogs.bind.manager import BindManager
 from cogs.bind.validator import BindError, BindValidator
 from core.bot import Moacyr
 from core.models.bind import Bind
-from core.utils import COLOR_DEF
+from core.utils import Genbed
 
 manager = BindManager()
 validator = BindValidator(manager)
@@ -48,10 +48,7 @@ class BindAddModal(Modal):
         manager.add(bind)
 
         await inter.response.send_message(
-            embed=Embed(
-                description=f"A bind **{self.btitle.capitalize()}** foi registrada!",
-                color=COLOR_DEF,
-            ),
+            embed=Genbed(f"A bind **{self.btitle.capitalize()}** foi registrada!"),
         )
 
 
@@ -81,19 +78,14 @@ class BindEditModal(Modal):
         text = validator.purge_text(self.text_row.component.value)
         if text == self.bind.text:
             await inter.response.send_message(
-                embed=Embed(
-                    description="Bem... você não alterou nada.", color=COLOR_DEF
-                )
+                embed=Genbed("Bem... você não alterou nada.")
             )
             return
         self.bind.text = text
         manager.edit(self.bind)
 
         await inter.response.send_message(
-            embed=Embed(
-                description=f"A bind **{self.bind.title.capitalize()}** foi editada!",
-                color=COLOR_DEF,
-            ),
+            embed=Genbed(f"A bind **{self.bind.title.capitalize()}** foi editada!"),
         )
 
 
@@ -187,7 +179,5 @@ class BindGroup(Group):
 
         manager.delete(bind)
         await inter.response.send_message(
-            embed=Embed(
-                description=f"A bind `{bind.title}` foi deletada.", color=COLOR_DEF
-            )
+            embed=Genbed(f"A bind **{bind.title}** foi deletada.")
         )

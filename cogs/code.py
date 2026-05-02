@@ -141,15 +141,13 @@ class CodeModal(Modal):
 
             except ReadTimeout:
                 await inter.followup.send(
-                    embed=utils.err_embed(
-                        "O servidor demorou muito tempo para responder."
-                    )
+                    embed=utils.Errbed("O servidor demorou muito tempo para responder.")
                 )
                 return
 
             except Exception:
                 await inter.followup.send(
-                    embed=utils.err_embed(
+                    embed=utils.Errbed(
                         "Ocorreu um erro desconhecido ao processar a solicitação."
                     )
                 )
@@ -157,15 +155,13 @@ class CodeModal(Modal):
 
         if response.status_code == 500:
             await inter.followup.send(
-                embed=utils.err_embed(
-                    "O servidor não foi capaz de processar esse código."
-                )
+                embed=utils.Errbed("O servidor não foi capaz de processar esse código.")
             )
             return
 
         elif response.status_code != 200:
             await inter.followup.send(
-                embed=utils.err_embed(
+                embed=utils.Errbed(
                     "Ocorreu um erro inesperado ao processar esse código."
                 )
             )
@@ -238,7 +234,7 @@ class RunCog(Cog):
                 return
 
         await inter.response.send_message(
-            embed=utils.err_embed("Nenhum compilador foi encontrado.")
+            embed=utils.Errbed("Nenhum compilador foi encontrado.")
         )
 
 
