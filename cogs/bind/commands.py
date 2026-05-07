@@ -179,5 +179,5 @@ class BindGroup(Group):
 
         manager.delete(bind)
         await inter.response.send_message(
-            embed=Genbed(f"A bind **{bind.title}** foi deletada.")
+            embed=Genbed(f"A bind **{bind.title.capitalize()}** foi deletada.")
         )
