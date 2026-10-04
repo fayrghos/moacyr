@@ -1,0 +1,13 @@
+name: moacyr
+
+services:
+  bot:
+    build: .
+    env_file: .env
+    stop_signal: SIGINT
+    volumes: db:/app/data/
+    restart: on-failure:3
+    tty: true
+
+volumes:
+  db:

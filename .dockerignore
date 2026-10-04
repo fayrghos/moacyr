@@ -1,4 +1,4 @@
-# Python-generated files
+# Python
 __pycache__/
 *.py[oc]
 build/
@@ -8,7 +8,7 @@ wheels/
 
 # Environment
 .venv
-.env
+.env*
 
 # Data
 data/
@@ -20,10 +20,7 @@ data/
 # Editors
 .idea/
 .vscode/
-
-# Docker
-.dockerignore
-Dockerfile
+.zed/
 
 # Git
 .git/

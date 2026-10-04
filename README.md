@@ -20,8 +20,8 @@ First, you will need to create a Discord bot and invite it to your server. Fortu
 
 ### Environment Variables
 
-The project also supports .env files for environment configuration. Set up the following environment variables in your
-system in order to proceed, note that variables marked with "\*" are mandatory.
+The project uses a `.env` file for environment configuration. Set up the following variables in your
+file in order to proceed. Note that variables marked with "\*" are mandatory.
 
 | Variable    | Description                       | Default |
 | ----------- | --------------------------------- | ------- |
@@ -40,19 +40,17 @@ uv run main.py
 
 ### Containerized Installation
 
-Alternatively, a preconfigured Dockerfile is available for a quicker setup. It should be compatible with both Docker and
-Podman.
+Alternatively, preconfigured `Dockerfile` and `compose.yaml` files are available for a quicker setup. They should be compatible with both Docker Compose and Podman Compose.
+
+If you're using Docker, simply replace `podman` with `docker` in the commands below.
 
 ```bash
-# Building the image
-podman build --tag moacyr:3.14 .
+# Building
+podman compose build
 
 # Running
-# Replace "token_here" with the actual token
-podman run --name moacyr --env BOT_TOKEN=token_here moacyr:3.14
+podman compose up
 ```
-
-If you're using Docker, simply replace `podman` with `docker` in the above commands.
 
 ## Third-Party APIs
 

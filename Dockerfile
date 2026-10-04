@@ -1,6 +1,6 @@
 FROM ghcr.io/astral-sh/uv:alpine
 
-WORKDIR /app
+WORKDIR /app/
 COPY . .
 
 RUN uv sync
