@@ -1,7 +1,5 @@
 """Validation helpers and errors for binds."""
 
-from typing import Union
-
 from discord import Member, User
 
 from cogs.bind.manager import BindManager
@@ -33,14 +31,12 @@ class BindValidator:
         if self.manager.single(title, guild):
             raise BindError("Já existe outra bind com esse título.")
 
-    def req_edit_perm(self, user: Union[Member, User], bind: Bind) -> None:
+    def req_edit_perm(self, user: Member | User, bind: Bind) -> None:
         """Require the user having permission to edit."""
         if user.id != bind.author:
             raise BindError("Você não é o dono dessa bind.")
 
-    def req_delete_perm(
-        self, user: Union[Member, User], bind: Bind, is_admin: bool
-    ) -> None:
+    def req_delete_perm(self, user: Member | User, bind: Bind, is_admin: bool) -> None:
         """Require the user having permission to delete."""
         if user.id != bind.author and not is_admin:
             raise BindError("Você não tem permissão para deletar essa bind.")

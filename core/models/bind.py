@@ -1,7 +1,6 @@
 """SQL models for bind commands;"""
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlmodel import Field, Index, SQLModel
 
@@ -11,14 +10,14 @@ from core.utils import Timestamp, stampify
 class Bind(SQLModel, table=True):
     __tablename__ = "binds"
 
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     title: str
     text: str
     author: int
     guild: int
 
     created: datetime = Field(default_factory=lambda: datetime.now(UTC))
-    updated: Optional[datetime] = Field(default=None)
+    updated: datetime | None = Field(default=None)
 
     __table_args__ = (
         Index("ix_binds_pairs", "guild", "title", unique=True),

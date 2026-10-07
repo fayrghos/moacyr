@@ -5,10 +5,10 @@ from os import makedirs
 from os.path import exists
 from pathlib import Path
 
-from sqlmodel import SQLModel, create_engine
+from sqlmodel import create_engine
 
 from core.config import config
-from core.models import bind as bind
+from core.models.bind import Bind
 
 logger = getLogger(__name__)
 
@@ -19,4 +19,4 @@ if not exists(DB_PATH):
 
 dbengine = create_engine(f"sqlite:///{DB_PATH}/main.db")
 
-SQLModel.metadata.create_all(dbengine)
+Bind.metadata.create_all(dbengine)

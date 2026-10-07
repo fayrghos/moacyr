@@ -1,7 +1,6 @@
 """Database access layer for binds."""
 
 from datetime import UTC, datetime
-from typing import Optional
 
 from sqlmodel import Session, col, delete, select
 
@@ -10,7 +9,7 @@ from core.models.bind import Bind
 
 
 class BindManager:
-    def single(self, title: str, guild: int) -> Optional[Bind]:
+    def single(self, title: str, guild: int) -> Bind | None:
         """Fetch a single bind by title and guild."""
         with Session(dbengine) as session:
             results = session.exec(

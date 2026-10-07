@@ -5,7 +5,7 @@ from io import BytesIO
 from os import unlink
 from pathlib import Path
 from tempfile import NamedTemporaryFile, _TemporaryFileWrapper
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 import httpx
 from discord import Attachment, Embed, File, Interaction
@@ -13,7 +13,7 @@ from discord.app_commands import CheckFailure, Group, command
 from httpx import UnsupportedProtocol
 from PIL import Image
 
-import core.utils as utils
+from core import utils
 from core.bot import Moacyr
 
 MAX_FILESIZE = 1e7
@@ -74,9 +74,7 @@ class ImageHandler:
             )
         raise ValueError("For some reason, the image is None.")
 
-    def __init__(
-        self, url: str, content: bytes, mime: Optional[str], size: int
-    ) -> None:
+    def __init__(self, url: str, content: bytes, mime: str | None, size: int) -> None:
         self.url = url
         self.content = BytesIO(content)
         self.mime = mime or "application/octet-stream"
@@ -159,7 +157,7 @@ async def call_anime_api(image: ImageHandler) -> Embed:
 
 
 def save_gif(
-    tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: Optional[float] = None
+    tmpfile: _TemporaryFileWrapper, imgbytes: BytesIO, scale: float | None = None
 ) -> Path:
     """Converts a image BytesIO to a GIF then saves it."""
     with Image.open(imgbytes) as file:
@@ -182,7 +180,7 @@ def normalize_mime(mime: str) -> str:
     return mime.split("/")[-1].split(";")[0].upper()
 
 
-def handle_shared_errors(error: Exception) -> Embed:
+def handle_shared_errors(error: ImageError) -> Embed:
     """Handles common errors that can occur in image commands."""
     match error:
         case FileSizeExceeded():
@@ -205,7 +203,7 @@ def handle_shared_errors(error: Exception) -> Embed:
                 O seu arquivo é do tipo inválido \"**{normalize_mime(err.mime)}**\".
 
                 Tipos suportados:
-                {"\n".join(list(map(lambda x: f"• **{normalize_mime(x)}**", ALLOWED_MIMES)))}
+                {"\n".join([f"• **{normalize_mime(mime)}**" for mime in ALLOWED_MIMES])}
             """)
             )
         case _:
@@ -230,8 +228,8 @@ class ImgGroup(Group):
     async def makegif(
         self,
         inter: Interaction,
-        url: Optional[str],
-        file: Optional[Attachment],
+        url: str | None,
+        file: Attachment | None,
         scale: float = 1.0,
     ) -> None:
         """Transforma uma imagem em um GIF estático.
@@ -255,7 +253,7 @@ class ImgGroup(Group):
             await inter.followup.send(embed=embed)
             return
 
-        image: Optional[ImageHandler] = None
+        image: ImageHandler | None = None
 
         try:
             if file:
@@ -269,21 +267,21 @@ class ImgGroup(Group):
                 await inter.followup.send(embed=embed)
                 return
 
-            temp_file = NamedTemporaryFile(suffix=".gif", delete=False)
-            path = save_gif(temp_file, image.content, scale)
+            with NamedTemporaryFile(suffix=".gif", delete=False) as temp_file:
+                path = save_gif(temp_file, image.content, scale)
 
-            await inter.followup.send(file=File(path))
-            temp_file.close()
-            unlink(path)
+                await inter.followup.send(file=File(path))
+                temp_file.close()
+                unlink(path)
 
-        except Exception as err:
+        except ImageError as err:
             await inter.followup.send(embed=handle_shared_errors(err))
 
     @command(
         name="find-anime",
     )
     async def findanime(
-        self, inter: Interaction, url: Optional[str], file: Optional[Attachment]
+        self, inter: Interaction, url: str | None, file: Attachment | None
     ) -> None:
         """Descubra o nome de um anime usando um frame dele.
 
@@ -307,23 +305,27 @@ class ImgGroup(Group):
                 embed = await call_anime_api(await ImageHandler.from_url(url))
                 await inter.followup.send(embed=embed)
 
-        except Exception as err:
+        except ImageError as err:
             await inter.followup.send(embed=handle_shared_errors(err))
 
 
-class FileSizeExceeded(Exception):
+class ImageError(Exception):
     pass
 
 
-class ImageTooSmall(Exception):
+class FileSizeExceeded(ImageError):
     pass
 
 
-class ImageTooBig(Exception):
+class ImageTooSmall(ImageError):
     pass
 
 
-class NotAllowedMime(Exception):
+class ImageTooBig(ImageError):
+    pass
+
+
+class NotAllowedMime(ImageError):
     def __init__(self, mime: str) -> None:
         self.mime = mime
 

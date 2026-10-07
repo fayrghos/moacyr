@@ -8,7 +8,7 @@ from discord import AllowedMentions, Embed, Interaction
 from discord.app_commands import command
 from discord.ext.commands import Cog
 
-import core.utils as utils
+from core import utils
 from core.bot import Moacyr
 
 DICE_LIMIT = 50_000

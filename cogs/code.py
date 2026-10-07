@@ -11,9 +11,9 @@ from discord import ButtonStyle, Interaction, TextStyle
 from discord.app_commands import Choice, autocomplete, command
 from discord.ext.commands import Cog
 from discord.ui import Button, Label, Modal, TextInput, View, button
-from httpx import ReadTimeout
+from httpx import HTTPError, ReadTimeout
 
-import core.utils as utils
+from core import utils
 from core.bot import Moacyr
 
 MAX_OUTPUT_WIDTH = 600
@@ -36,7 +36,7 @@ def get_compiler_list() -> list[dict[str, Any]]:
         logger.info("The Wandbox connection is OK.")
         return functional_compilers
 
-    except Exception as err:
+    except HTTPError as err:
         logger.error(f"Failed to connect to Wandbox: {err}")
         return []
 
@@ -145,7 +145,7 @@ class CodeModal(Modal):
                 )
                 return
 
-            except Exception:
+            except HTTPError:
                 await inter.followup.send(
                     embed=utils.Errbed(
                         "Ocorreu um erro desconhecido ao processar a solicitação."

@@ -70,7 +70,6 @@ class Moacyr(Bot):
 
     async def on_command_error(self, ctx: Context, err: Exception) -> None:
         """Prefix commands."""
-        pass
 
     async def on_slash_command_error(self, inter: Interaction, err: Exception) -> None:
         """Slash commands."""
@@ -79,6 +78,6 @@ class Moacyr(Bot):
 
         logger.exception("Unknown Exception.", exc_info=err)
         if not inter.response.is_done():
-            await inter.response.send(
-                Embed=Errbed("Ocorreu um erro não catalogado.", crit=True)
+            await inter.response.send_message(
+                embed=Errbed("Ocorreu um erro não catalogado.", crit=True)
             )

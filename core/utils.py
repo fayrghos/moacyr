@@ -30,10 +30,10 @@ class Genbed(Embed):
 
     def __init__(self, desc: str, *args, **kwargs) -> None:
         super().__init__(
-            description=desc,
-            color=COLOR_DEF,
             *args,
+            description=desc,
             **kwargs,
+            color=COLOR_DEF,
         )
 
 
@@ -42,9 +42,9 @@ class Errbed(Embed):
 
     def __init__(self, desc: str, *args, crit: bool = False, **kwargs) -> None:
         super().__init__(
+            *args,
             description=desc,
             color=COLOR_ERR if not crit else COLOR_CRIT,
-            *args,
             **kwargs,
         )
 

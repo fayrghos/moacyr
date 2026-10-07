@@ -2,12 +2,13 @@
 
 import platform
 import textwrap
-from typing import Optional
 
 import discord
+from discord import DiscordException
+from discord.abc import GuildChannel
 from discord.ext.commands import Cog, Context, command
 
-import core.utils as utils
+from core import utils
 from core.bot import Moacyr
 
 
@@ -27,7 +28,7 @@ class DevCog(Cog):
         await self.bot.close()
 
     @command(aliases=["del"], hidden=True)
-    async def delmsg(self, ctx: Context, req_msg: int, req_chan: Optional[int]) -> None:
+    async def delmsg(self, ctx: Context, req_msg: int, req_chan: int | None) -> None:
         """Deletes a message using message and channel IDs."""
         try:
             if not req_chan:
@@ -39,7 +40,7 @@ class DevCog(Cog):
                 await message.delete()
                 await ctx.message.add_reaction("🖌️")
 
-        except Exception:
+        except DiscordException:
             await ctx.message.add_reaction("❔")
 
     @command(hidden=True)
@@ -61,6 +62,8 @@ class DevCog(Cog):
     async def channelperms(self, ctx: Context) -> None:
         """Prints all channel permissions."""
         if not ctx.guild or not isinstance(ctx.me, discord.Member):
+            return
+        if not isinstance(ctx.channel, GuildChannel):
             return
 
         perm_str = ""

@@ -4,7 +4,7 @@ import asyncio
 import re
 from logging import getLogger
 from textwrap import dedent, shorten
-from typing import Any, Optional, Self
+from typing import Any, Self
 
 import httpx
 from discord import Colour, Embed, Interaction
@@ -159,7 +159,7 @@ class SteamUser:
         steamid: SteamID,
         summary: dict[str, Any],
         bans: dict[str, Any],
-        friends: Optional[list[dict[str, Any]]],
+        friends: list[dict[str, Any]] | None,
         level: dict[str, Any],
         customs: dict[str, dict[str, Any]],
     ) -> None:
@@ -174,7 +174,7 @@ class SteamUser:
         self.name: str = self.r_summary["personaname"]
         self.avatar: str = self.r_summary["avatarfull"]
         self.url = f"https://steamcommunity.com/profiles/{self.id.id64}"
-        self.level: Optional[int] = self.r_level.get("player_level", None)
+        self.level: int | None = self.r_level.get("player_level", None)
 
         self.vacban_amount: int = self.r_bans["NumberOfVACBans"]
         self.gameban_amount: int = self.r_bans["NumberOfGameBans"]
@@ -185,25 +185,25 @@ class SteamUser:
         self.commban_status: bool = self.r_bans["CommunityBanned"]
         self.tradeban_status: bool = self.r_bans["EconomyBan"] != "none"
 
-        self.join: Optional[int] = self.r_summary.get("timecreated")
-        self.seen: Optional[int] = self.r_summary.get("lastlogoff")
+        self.join: int | None = self.r_summary.get("timecreated")
+        self.seen: int | None = self.r_summary.get("lastlogoff")
 
     @property
-    def friend_amount(self) -> Optional[int]:
+    def friend_amount(self) -> int | None:
         if self.r_friends:
             return len(self.r_friends)
         return None
 
     @property
-    def country(self) -> Optional[str]:
-        country: Optional[str] = self.r_summary.get("loccountrycode")
+    def country(self) -> str | None:
+        country: str | None = self.r_summary.get("loccountrycode")
         if country:
             return f":flag_{country.lower()}:"
         return None
 
     @property
     def background(self) -> str:
-        url: Optional[str] = self.r_customs["profile_background"].get("image_large")
+        url: str | None = self.r_customs["profile_background"].get("image_large")
         if url:
             return f"https://steamcdn-a.akamaihd.net/steamcommunity/public/images/{url}"
         return "https://steamcommunity-a.akamaihd.net/public/images/profile/2020/bg_dots.png"
@@ -327,7 +327,7 @@ class SteamGroup(Group):
             )
             await inter.followup.send(embed=embed)
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             embed = Errbed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
@@ -375,7 +375,7 @@ class SteamGroup(Group):
             )
             await inter.followup.send(embed=embed)
 
-        except Exception:
+        except Exception:  # noqa: BLE001
             embed = Errbed("Algo deu errado.")
             await inter.followup.send(embed=embed)
 
