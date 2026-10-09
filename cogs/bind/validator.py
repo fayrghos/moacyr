@@ -2,15 +2,11 @@
 
 from discord import Member, User
 
+from cogs.bind.exceptions import BindError
 from cogs.bind.manager import BindManager
 from core.models.bind import Bind
-from core.utils import MoacyrException
 
 TITLE_MAX = 18
-
-
-class BindError(MoacyrException):
-    pass
 
 
 class BindValidator:
