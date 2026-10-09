@@ -23,11 +23,10 @@ First, you will need to create a Discord bot and invite it to your server. Fortu
 The project uses a `.env` file for environment configuration. Set up the following variables in your
 file in order to proceed. Note that variables marked with "\*" are mandatory.
 
-| Variable    | Description                       | Default |
-| ----------- | --------------------------------- | ------- |
-| BOT_TOKEN\* | The Discord bot auth token.       |         |
-| STEAM_KEY   | A Steam Web API key.              |         |
-| DB_PATH\*   | The path for the SQLite database. | ./data/ |
+| Variable    | Description                 | Default |
+| ----------- | --------------------------- | ------- |
+| BOT_TOKEN\* | The Discord bot auth token. |         |
+| STEAM_KEY   | A Steam Web API key.        |         |
 
 ### Native Installation
 
