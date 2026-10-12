@@ -1,4 +1,4 @@
-"""SQL models for bind commands;"""
+"""SQL models for bind commands."""
 
 from datetime import UTC, datetime
 
