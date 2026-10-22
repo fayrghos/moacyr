@@ -21,6 +21,11 @@ class CompileCog(Cog):
 
     @command(name="compile")
     async def cm_compile(self, inter: Interaction, language: str) -> None:
+        """Executa código em diversas linguagens de programação.
+
+        Args:
+            language: A linguagem a ser executada.
+        """
         compilers = self.manager.get_compilers(language)
         if not compilers:
             await inter.response.send_message(

@@ -26,7 +26,7 @@ class CompileModal(Modal):
 
     compiler_field = Label(
         text="Compilador",
-        component=Select(required=False),
+        component=Select(placeholder="Automático", required=False),
     )
 
     stdin_field = Label(
