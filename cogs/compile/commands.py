@@ -21,11 +21,11 @@ class CompileCog(Cog):
 
     @command(name="compile")
     async def cm_compile(self, inter: Interaction, language: str) -> None:
-        compiler = self.manager.get_compiler(language)
-        if not compiler:
+        compilers = self.manager.get_compilers(language)
+        if not compilers:
             await inter.response.send_message(
                 embed=Errbed(f"Não existe nenhuma linguagem '{language}' cadastrada.")
             )
             return
 
-        await inter.response.send_modal(CompileModal(compiler))
+        await inter.response.send_modal(CompileModal(compilers))

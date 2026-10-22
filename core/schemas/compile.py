@@ -2,6 +2,7 @@
 
 from typing import Annotated
 
+from discord import SelectOption
 from discord.app_commands import Choice
 from pydantic import AfterValidator, BaseModel, Field, RootModel
 
@@ -20,6 +21,10 @@ class Compiler(BaseModel):
     def choicefy(self) -> Choice[str]:
         """Converts this compiler into a Discord app choice."""
         return Choice(name=self.language, value=self.language.lower())
+
+    def selectify(self) -> SelectOption:
+        """Converts this compiler into a Discord app select option."""
+        return SelectOption(label=self.name, value=self.name)
 
 
 class CompilerList(RootModel[list[Compiler]]):

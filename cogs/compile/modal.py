@@ -4,7 +4,7 @@ from textwrap import dedent
 from typing import override
 
 from discord import Embed, Interaction, TextStyle
-from discord.ui import Label, Modal, TextInput
+from discord.ui import Label, Modal, Select, TextInput
 from httpx import HTTPStatusError, RequestError, TimeoutException
 from pydantic import ValidationError
 
@@ -24,6 +24,11 @@ class CompileModal(Modal):
         ),
     )
 
+    compiler_field = Label(
+        text="Compilador",
+        component=Select(required=False),
+    )
+
     stdin_field = Label(
         text="Entrada Padrão",
         description="Conteúdo para input(), scanf() e derivados, separado por linhas.",
@@ -33,9 +38,29 @@ class CompileModal(Modal):
         ),
     )
 
-    def __init__(self, compiler: Compiler) -> None:
-        super().__init__(title=f"Rodar {compiler.language}")
-        self.compiler = compiler
+    def __init__(self, compilers: list[Compiler]) -> None:
+        self.compilers = compilers
+        super().__init__(title=f"Rodar {self.language_name}")
+
+        assert isinstance(self.compiler_field.component, Select)
+        self.compiler_field.component.options = [
+            compiler.selectify() for compiler in self.compilers
+        ]
+
+    @property
+    def language_name(self) -> str:
+        """Returns the name of the language that is being used."""
+        return self.compilers[0].language
+
+    @property
+    def compiler_name(self) -> str:
+        """Returns the name of the compiler that is being used."""
+        assert isinstance(self.compiler_field.component, Select)
+        return (
+            self.compiler_field.component.values[0]
+            if self.compiler_field.component.values
+            else self.compilers[0].name
+        )
 
     @override
     async def on_submit(self, inter: Interaction) -> None:
@@ -46,7 +71,7 @@ class CompileModal(Modal):
         try:
             response = await CompilerManager.send_compile(
                 CompileRequest(
-                    compiler=self.compiler.name,
+                    compiler=self.compiler_name,
                     code=self.code_field.component.value,
                     stdin=self.stdin_field.component.value,
                 )
@@ -58,7 +83,7 @@ class CompileModal(Modal):
             return
         except ValidationError:
             await inter.followup.send(
-                embed=Errbed("Não foi possível validar as entradas da compilação.")
+                embed=Errbed("Não foi possível validar a resposta da compilação.")
             )
             return
         except TimeoutException:
@@ -74,11 +99,11 @@ class CompileModal(Modal):
 
         await inter.followup.send(
             embed=Embed(
-                title=self.compiler.language,
+                title=self.language_name,
                 color=COLOR_DEBUG,
                 description=dedent(f"""
                     Saída: **{response.status}**
-                    Compilador: **{self.compiler.name}**
+                    Compilador: **{self.compiler_name}**
                     ```
                     {cooler_shorten(response.output, MAX_OUTPUT)}
                     ```

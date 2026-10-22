@@ -62,12 +62,13 @@ class CompilerManager:
         self.compilers = compilers
         self.choices = self._choicefy_compilers(compilers)
 
-    def get_compiler(self, language: str) -> Compiler | None:
-        """Gets a specific compiler from the compiler list."""
-        for compiler in self.compilers:
-            if compiler.language.lower() == language.lower():
-                return compiler
-        return None
+    def get_compilers(self, language: str) -> list[Compiler]:
+        """Gets all compilers from a specific language."""
+        return [
+            compiler
+            for compiler in self.compilers
+            if compiler.language.lower() == language.lower()
+        ]
 
     def _choicefy_compilers(self, compilers: list[Compiler]) -> list[Choice[str]]:
         """Returns a minimal version of the compiler list which only contains one entry per language."""
